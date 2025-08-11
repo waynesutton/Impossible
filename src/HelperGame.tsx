@@ -65,42 +65,49 @@ export function HelperGame({ inviteId }: HelperGameProps) {
     const currentGuess = mainPlayerGameState.currentGuess?.toLowerCase() || "";
 
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-        <p className="text-sm text-blue-800 font-semibold mb-2 text-center">
+      <div className="brutal-card" style={{ background: "var(--bg-surface)" }}>
+        <p
+          className="brutal-text-md mb-4 text-center"
+          style={{ color: "var(--text-primary)" }}
+        >
           {inviteInfo?.creatorName}'s Current Progress:
         </p>
-        <div className="flex justify-center gap-2 mb-2">
+        <div className="flex justify-center gap-2 mb-4">
           {letters.map((letter, index) => {
             const isRevealed = currentGuess[index] === letter;
             const hasGuess = currentGuess[index];
             return (
               <div
                 key={index}
-                className={`w-8 h-8 border-2 flex items-center justify-center text-sm font-bold uppercase transition-all duration-200 ${
-                  isRevealed
-                    ? "border-green-500 bg-green-100 text-green-800"
-                    : hasGuess
-                      ? "border-red-500 bg-red-100 text-red-800"
-                      : "border-gray-300 bg-white text-gray-400"
+                className={`brutal-word-box ${
+                  isRevealed ? "correct" : hasGuess ? "filled" : "empty"
                 }`}
+                style={{ width: "2rem", height: "2rem", fontSize: "0.875rem" }}
               >
                 {isRevealed ? letter : hasGuess ? currentGuess[index] : ""}
               </div>
             );
           })}
         </div>
-        <p className="text-xs text-blue-600 text-center">
-          Attempts: {mainPlayerGameState.attempts}/3
-        </p>
+        <div className="text-center">
+          <span className="brutal-badge">
+            Attempts: {mainPlayerGameState.attempts}/3
+          </span>
+        </div>
       </div>
     );
   };
 
   if (!inviteInfo) {
     return (
-      <div className="text-center space-y-4">
-        <div className="text-xl font-bold text-red-600">Invalid Invite</div>
-        <p className="text-gray-600">
+      <div className="brutal-card text-center">
+        <div className="brutal-text-xl" style={{ color: "var(--bg-error)" }}>
+          Invalid Invite
+        </div>
+        <p
+          className="brutal-text-md mt-4"
+          style={{ color: "var(--text-secondary)" }}
+        >
           This invite link is invalid or has expired.
         </p>
       </div>
@@ -109,39 +116,56 @@ export function HelperGame({ inviteId }: HelperGameProps) {
 
   if (!helperGameWord) {
     return (
-      <div className="text-center">
+      <div className="brutal-card text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading game word...</p>
+        <p style={{ color: "var(--text-secondary)" }}>Loading game word...</p>
       </div>
     );
   }
 
   if (!hasJoined) {
     return (
-      <div className="text-center space-y-6">
-        <div className="text-2xl font-bold text-black">
-          You're Invited to Help!
+      <div className="text-center space-y-8">
+        <div className="brutal-card">
+          <div
+            className="brutal-text-xl mb-4"
+            style={{ color: "var(--text-primary)" }}
+          >
+            You're Invited to Help!
+          </div>
+          <p
+            className="brutal-text-md"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <span className="brutal-badge mr-2">{inviteInfo.creatorName}</span>
+            needs your help guessing their impossible word!
+          </p>
         </div>
-        <p className="text-gray-600">
-          <span className="font-semibold">{inviteInfo.creatorName}</span> needs
-          your help guessing their impossible word!
-        </p>
-        <div className="bg-gray-100 rounded-lg p-4">
-          <p className="text-sm text-gray-600 mb-2">Letters in the word:</p>
-          <div className="flex justify-center gap-1 flex-wrap">
+        <div
+          className="brutal-card"
+          style={{ background: "var(--bg-surface)" }}
+        >
+          <p
+            className="brutal-text-md mb-4"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Letters in the word:
+          </p>
+          <div className="flex justify-center gap-2 flex-wrap">
             {helperGameWord.shuffledLetters?.map((letter, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-sm font-mono uppercase"
-              >
+              <span key={index} className="brutal-badge">
                 {letter}
               </span>
-            )) || <span className="text-gray-500">Loading letters...</span>}
+            )) || (
+              <span style={{ color: "var(--text-secondary)" }}>
+                Loading letters...
+              </span>
+            )}
           </div>
         </div>
         <button
           onClick={handleJoin}
-          className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-semibold"
+          className="brutal-button px-8 py-4 text-lg"
         >
           Join as Helper
         </button>
@@ -150,12 +174,18 @@ export function HelperGame({ inviteId }: HelperGameProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-black mb-2">
+    <div className="space-y-8">
+      <div className="brutal-card text-center">
+        <div
+          className="brutal-text-xl mb-4"
+          style={{ color: "var(--text-primary)" }}
+        >
           Helping {inviteInfo.creatorName}
         </div>
-        <p className="text-gray-600">
+        <p
+          className="brutal-text-md"
+          style={{ color: "var(--text-secondary)" }}
+        >
           You can suggest up to 3 words to help them guess!
         </p>
       </div>
@@ -163,31 +193,35 @@ export function HelperGame({ inviteId }: HelperGameProps) {
       {/* Main player's current progress */}
       {renderMainPlayerWordDisplay()}
 
-      <div className="bg-gray-100 rounded-lg p-4">
-        <p className="text-sm text-gray-600 mb-2 text-center">
+      <div className="brutal-card" style={{ background: "var(--bg-surface)" }}>
+        <p
+          className="brutal-text-md mb-4 text-center"
+          style={{ color: "var(--text-primary)" }}
+        >
           Letters in the word:
         </p>
-        <div className="flex justify-center gap-1 flex-wrap">
+        <div className="flex justify-center gap-2 flex-wrap">
           {helperGameWord.shuffledLetters?.map((letter, index) => (
-            <span
-              key={index}
-              className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-sm font-mono uppercase"
-            >
+            <span key={index} className="brutal-badge">
               {letter}
             </span>
-          )) || <span className="text-gray-500">Loading letters...</span>}
+          )) || (
+            <span style={{ color: "var(--text-secondary)" }}>
+              Loading letters...
+            </span>
+          )}
         </div>
       </div>
 
       {helperState && helperState.canSuggest && (
-        <div className="space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-2">
+        <div className="brutal-card">
+          <div className="text-center mb-4">
+            <div className="brutal-badge">
               Suggestions remaining: {3 - helperState.suggestionsUsed}/3
-            </p>
+            </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <input
               type="text"
               value={currentInput}
@@ -203,7 +237,7 @@ export function HelperGame({ inviteId }: HelperGameProps) {
                 )
               }
               disabled={isSubmitting}
-              className="w-full px-4 py-3 text-center text-xl font-mono uppercase border-2 border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none transition-colors"
+              className="brutal-input w-full text-center text-xl disabled:opacity-50"
               placeholder="Suggest a word..."
               maxLength={
                 mainPlayerGameState?.length || helperGameWord.word.length
@@ -214,7 +248,7 @@ export function HelperGame({ inviteId }: HelperGameProps) {
               <button
                 onClick={handleSubmitSuggestion}
                 disabled={!currentInput.trim() || isSubmitting}
-                className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                className="brutal-button px-6 py-3 disabled:opacity-50"
               >
                 {isSubmitting ? "Sending..." : "Send Suggestion"}
               </button>
@@ -224,19 +258,30 @@ export function HelperGame({ inviteId }: HelperGameProps) {
       )}
 
       {helperState && helperState.mainUserGameOver && (
-        <div className="text-center space-y-4">
-          <div className="text-xl font-bold text-red-600">Game Over</div>
-          <p className="text-gray-600">
+        <div className="brutal-card text-center">
+          <div
+            className="brutal-text-xl mb-4"
+            style={{ color: "var(--bg-error)" }}
+          >
+            Game Over
+          </div>
+          <p
+            className="brutal-text-md mb-4"
+            style={{ color: "var(--text-secondary)" }}
+          >
             {helperState.mainUserCompleted
               ? "Your friend game is over!"
               : "Your friend used all 3 attempts."}
           </p>
-          <p className="text-sm text-gray-500">
+          <p
+            className="text-sm mb-4"
+            style={{ color: "var(--text-secondary)" }}
+          >
             Check the leaderboard for updates!
           </p>
           <button
             onClick={() => (window.location.href = "/")}
-            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="brutal-button px-6 py-3"
           >
             Go to Leaderboard
           </button>
@@ -246,11 +291,14 @@ export function HelperGame({ inviteId }: HelperGameProps) {
       {helperState &&
         !helperState.canSuggest &&
         !helperState.mainUserGameOver && (
-          <div className="text-center space-y-4">
-            <div className="text-lg font-semibold text-gray-600">
+          <div className="brutal-card text-center">
+            <div
+              className="brutal-text-lg mb-4"
+              style={{ color: "var(--text-primary)" }}
+            >
               All suggestions used!
             </div>
-            <p className="text-gray-500">
+            <p style={{ color: "var(--text-secondary)" }}>
               You've sent all 3 suggestions. Good luck to your friend!
             </p>
           </div>

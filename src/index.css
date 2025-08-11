@@ -2,50 +2,377 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme Variables */
 :root {
-  --color-light: #ffffff;
-  --color-dark: #171717;
+  /* Neobrutalism Theme (Default) */
+  --bg-primary: #ffeaa7;
+  --bg-secondary: #ffffff;
+  --bg-accent: #fd79a8;
+  --bg-surface: #74b9ff;
+  --bg-warning: #fdcb6e;
+  --bg-success: #00b894;
+  --bg-error: #e17055;
+
+  --text-primary: #2d3436;
+  --text-secondary: #636e72;
+  --text-accent: #ffffff;
+  --text-inverse: #ffffff;
+
+  --border-color: #2d3436;
+  --border-width: 4px;
+  --border-radius: 0px;
+
+  --shadow-brutal: 8px 8px 0px #2d3436;
+  --shadow-small: 4px 4px 0px #2d3436;
+  --shadow-large: 12px 12px 0px #2d3436;
+
+  --font-heading: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "Courier New", monospace;
 }
 
-.accent-text {
-  @apply text-slate-600;
+[data-theme="original"] {
+  /* Original Theme */
+  --bg-primary: #f9fafb;
+  --bg-secondary: #ffffff;
+  --bg-accent: #111827;
+  --bg-surface: #f3f4f6;
+  --bg-warning: #fef3c7;
+  --bg-success: #d1fae5;
+  --bg-error: #fee2e2;
+
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-accent: #111827;
+  --text-inverse: #ffffff;
+
+  --border-color: #d1d5db;
+  --border-width: 1px;
+  --border-radius: 8px;
+
+  --shadow-brutal: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-small: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-large: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+  --font-heading: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
 }
 
+[data-theme="dark"] {
+  /* Dark Mode Theme */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-accent: #3b82f6;
+  --bg-surface: #334155;
+  --bg-warning: #f59e0b;
+  --bg-success: #10b981;
+  --bg-error: #ef4444;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-accent: #ffffff;
+  --text-inverse: #0f172a;
+
+  --border-color: #475569;
+  --border-width: 2px;
+  --border-radius: 8px;
+
+  --shadow-brutal: 0 4px 6px -1px rgb(0 0 0 / 0.3);
+  --shadow-small: 0 2px 4px -1px rgb(0 0 0 / 0.2);
+  --shadow-large: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+
+  --font-heading: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+}
+
+/* Base Styles */
 body {
-  font-family:
-    "Inter Variable",
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    "Noto Sans",
-    sans-serif,
-    "Apple Color Emoji",
-    "Segoe UI Emoji",
-    "Segoe UI Symbol",
-    "Noto Color Emoji";
-  color: var(--color-dark);
-  background: var(--color-light);
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
-/* only use this to update the style of the auth input fields. use a different class for all other input fields */
+/* Neobrutalism Components */
+.brutal-container {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+  transition: all 0.2s ease;
+}
+
+.brutal-container:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: calc(var(--shadow-brutal) + 2px);
+}
+
+.brutal-button {
+  background: var(--bg-accent);
+  color: var(--text-inverse);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.1s ease;
+  cursor: pointer;
+}
+
+.brutal-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+.brutal-button:active {
+  transform: translate(1px, 1px);
+  box-shadow: var(--shadow-small);
+}
+
+.brutal-button.secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.brutal-button.warning {
+  background: var(--bg-warning);
+  color: var(--text-primary);
+}
+
+.brutal-button.success {
+  background: var(--bg-success);
+  color: var(--text-inverse);
+}
+
+.brutal-button.error {
+  background: var(--bg-error);
+  color: var(--text-inverse);
+}
+
+.brutal-input {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: inset var(--shadow-small);
+  padding: 1rem;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.brutal-input:focus {
+  outline: none;
+  box-shadow: inset var(--shadow-brutal);
+}
+
+.brutal-card {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+  padding: 2rem;
+}
+
+.brutal-card.error {
+  background: var(--bg-error);
+  color: var(--text-inverse);
+}
+
+.brutal-badge {
+  background: var(--bg-accent);
+  color: var(--text-inverse);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-block;
+}
+
+.brutal-header {
+  background: var(--bg-secondary);
+  border-bottom: var(--border-width) solid var(--border-color);
+  box-shadow: 0 var(--border-width) 0 var(--border-color);
+}
+
+.brutal-nav-button {
+  background: transparent;
+  color: var(--text-primary);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  transition: all 0.1s ease;
+}
+
+.brutal-nav-button:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-small);
+}
+
+.brutal-nav-button.active {
+  background: var(--bg-accent);
+  color: var(--text-inverse);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-small);
+}
+
+.brutal-word-box {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.brutal-word-box.correct {
+  background: var(--bg-success);
+  color: var(--text-inverse);
+  transform: scale(1.1);
+}
+
+.brutal-word-box.incorrect {
+  background: var(--bg-error);
+  color: var(--text-inverse);
+  animation: shake 0.5s ease-in-out;
+}
+
+.brutal-word-box.filled {
+  background: var(--bg-warning);
+  color: var(--text-primary);
+}
+
+.brutal-word-box.empty {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.brutal-leaderboard-item {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.2s ease;
+}
+
+.brutal-leaderboard-item:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+.brutal-stats-card {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.brutal-text-xl {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.brutal-text-lg {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.brutal-text-md {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Theme Switcher */
+.theme-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-button {
+  background: transparent;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-size: 1.2rem;
+}
+
+.theme-button:hover {
+  background: var(--bg-surface);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-small);
+}
+
+.theme-button.active {
+  background: var(--bg-accent);
+  color: var(--text-inverse);
+}
+
+/* Legacy Classes for Compatibility */
+.accent-text {
+  color: var(--text-secondary);
+}
+
 .auth-input-field {
-  @apply w-full px-4 py-3 rounded-container bg-white border border-gray-200 focus:border-black focus:ring-1 focus:ring-black outline-none transition-shadow shadow-sm hover:shadow;
+  @apply brutal-input;
 }
 
-/* only use this to update the style of the auth buttons. use the button class for all other buttons */
 .auth-button {
-  @apply w-full px-4 py-3 rounded bg-black text-white font-semibold hover:bg-gray-800 transition-colors shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply brutal-button;
 }
 
 .text-primary {
-  @apply text-black;
+  color: var(--text-primary);
 }
 
 .text-primary-hover {
-  @apply text-gray-800;
+  color: var(--text-secondary);
 }

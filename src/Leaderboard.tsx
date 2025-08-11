@@ -39,9 +39,9 @@ export function Leaderboard({
 
   if (!leaderboard) {
     return (
-      <div className="text-center">
+      <div className="brutal-card text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading leaderboard...</p>
+        <p style={{ color: "var(--text-secondary)" }}>Loading leaderboard...</p>
       </div>
     );
   }
@@ -61,32 +61,48 @@ export function Leaderboard({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Game Completion Section */}
       {gameCompletionData && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+        <div className="brutal-card text-center">
           {gameCompletionData.won ? (
             <div className="space-y-4">
-              <div className="text-3xl font-bold text-green-600">
+              <div
+                className="brutal-text-xl"
+                style={{ color: "var(--bg-success)" }}
+              >
                 🎉 Congratulations!
               </div>
-              <p className="text-gray-600">You guessed the impossible word!</p>
-              <p className="text-lg font-mono uppercase font-bold text-gray-800">
-                {gameCompletionData.word}
+              <p
+                className="brutal-text-md"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                You guessed the impossible word!
               </p>
-              <p className="text-sm text-gray-500">
+              <div className="brutal-badge text-lg">
+                {gameCompletionData.word}
+              </div>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 Solved in {gameCompletionData.attempts} attempts
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="text-2xl font-bold text-red-600">Game Over</div>
-              <p className="text-gray-600">You've used all 3 attempts!</p>
-              <p className="text-sm text-gray-500">
+              <div
+                className="brutal-text-xl"
+                style={{ color: "var(--bg-error)" }}
+              >
+                Game Over
+              </div>
+              <p
+                className="brutal-text-md"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                You've used all 3 attempts!
+              </p>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                 The word was:{" "}
-                <span className="font-bold uppercase font-mono">
-                  {gameCompletionData.word}
-                </span>
+                <span className="brutal-badge">{gameCompletionData.word}</span>
               </p>
             </div>
           )}
@@ -94,29 +110,29 @@ export function Leaderboard({
           {/* Name Entry Form */}
           {showNameEntry && (
             <div className="mt-6 space-y-4">
-              <p className="text-sm text-gray-600">
+              <p
+                className="brutal-text-md"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 Add your name to the leaderboard (optional):
               </p>
-              <form onSubmit={handleNameSubmit} className="space-y-3">
+              <form onSubmit={handleNameSubmit} className="space-y-4">
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none"
+                  className="brutal-input w-full"
                   maxLength={20}
                 />
-                <div className="flex gap-2 justify-center">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                  >
+                <div className="flex gap-3 justify-center">
+                  <button type="submit" className="brutal-button px-6 py-2">
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={handleSkipNameEntry}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="brutal-button secondary px-6 py-2"
                   >
                     Skip
                   </button>
@@ -130,7 +146,7 @@ export function Leaderboard({
             <div className="mt-6">
               <button
                 onClick={onStartNewGame}
-                className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+                className="brutal-button px-8 py-4 text-lg"
               >
                 Start New Game
               </button>
@@ -139,21 +155,37 @@ export function Leaderboard({
         </div>
       )}
 
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Leaderboard</h1>
-        <p className="text-gray-600">
+      <div className="brutal-card text-center">
+        <h1
+          className="brutal-text-xl mb-4"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Leaderboard
+        </h1>
+        <p
+          className="brutal-text-md"
+          style={{ color: "var(--text-secondary)" }}
+        >
           Hall of Fame - Every impossible word conquered!
         </p>
       </div>
 
       {/* Global Stats */}
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="text-center space-y-2">
-          <div className="text-2xl font-bold text-gray-800">
+      <div className="brutal-stats-card">
+        <div className="space-y-3">
+          <div
+            className="brutal-text-xl"
+            style={{ color: "var(--text-primary)" }}
+          >
             {leaderboard.totalCompleted}
           </div>
-          <div className="text-sm text-gray-600">Words Conquered</div>
-          <div className="text-xs text-gray-500">
+          <div
+            className="brutal-text-md"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Words Conquered
+          </div>
+          <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
             {leaderboard.successRate}% success rate (
             {leaderboard.totalCompleted}/{leaderboard.totalGames} games)
           </div>
@@ -162,33 +194,63 @@ export function Leaderboard({
 
       {/* User Stats */}
       {userStats && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-center space-y-2">
-            <div className="text-sm font-semibold text-blue-800">
+        <div
+          className="brutal-card"
+          style={{ background: "var(--bg-surface)" }}
+        >
+          <div className="text-center space-y-4">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
               Your Stats
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-lg font-bold text-blue-700">
+              <div className="brutal-stats-card">
+                <div
+                  className="brutal-text-lg"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {userStats.completedGames}
                 </div>
-                <div className="text-xs text-blue-600">Completed</div>
+                <div
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Completed
+                </div>
               </div>
-              <div>
-                <div className="text-lg font-bold text-blue-700">
+              <div className="brutal-stats-card">
+                <div
+                  className="brutal-text-lg"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {userStats.totalGames}
                 </div>
-                <div className="text-xs text-blue-600">Total Games</div>
+                <div
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Total Games
+                </div>
               </div>
-              <div>
-                <div className="text-lg font-bold text-blue-700">
+              <div className="brutal-stats-card">
+                <div
+                  className="brutal-text-lg"
+                  style={{ color: "var(--text-primary)" }}
+                >
                   {userStats.successRate}%
                 </div>
-                <div className="text-xs text-blue-600">Success Rate</div>
+                <div
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Success Rate
+                </div>
               </div>
             </div>
             {userStats.bestAttempts && (
-              <div className="text-xs text-blue-600 mt-2">
+              <div className="brutal-badge">
                 Best: {userStats.bestAttempts} attempt
                 {userStats.bestAttempts === 1 ? "" : "s"}
               </div>
@@ -198,16 +260,26 @@ export function Leaderboard({
       )}
 
       {/* Winners Hall of Fame */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800 text-center">
-          Winners Hall of Fame
-        </h2>
+      <div className="space-y-6">
+        <div className="brutal-card text-center">
+          <h2
+            className="brutal-text-lg"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Winners Hall of Fame
+          </h2>
+        </div>
 
         {leaderboard.completedGames.length === 0 ? (
-          <div className="text-center py-8">
+          <div className="brutal-card text-center py-8">
             <div className="text-4xl mb-4">🏆</div>
-            <p className="text-gray-600">No victories yet!</p>
-            <p className="text-sm text-gray-500 mt-2">
+            <p
+              className="brutal-text-md mb-2"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              No victories yet!
+            </p>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
               Be the first to conquer an impossible word.
             </p>
           </div>
@@ -220,16 +292,24 @@ export function Leaderboard({
               if (gamesForAttempts.length === 0) return null;
 
               return (
-                <div key={attemptCount} className="space-y-3">
+                <div key={attemptCount} className="space-y-4">
                   <div className="text-center">
                     <div
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
+                      className={`brutal-badge inline-flex items-center gap-2 px-6 py-3 text-lg ${
                         attemptCount === 1
-                          ? "bg-yellow-100 text-yellow-800"
+                          ? ""
                           : attemptCount === 2
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-orange-100 text-orange-800"
+                            ? "secondary"
+                            : "warning"
                       }`}
+                      style={{
+                        background:
+                          attemptCount === 1
+                            ? "var(--bg-warning)"
+                            : attemptCount === 2
+                              ? "var(--bg-surface)"
+                              : "var(--bg-accent)",
+                      }}
                     >
                       {attemptCount === 1
                         ? "🥇"
@@ -243,47 +323,50 @@ export function Leaderboard({
                   </div>
 
                   {/* Words conquered in this attempt count */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     {[
                       ...new Set(
                         gamesForAttempts.map((game: any) => game.word),
                       ),
                     ].map((word) => (
-                      <div
-                        key={word}
-                        className="text-center p-2 bg-gray-50 rounded border"
-                      >
-                        <span className="font-mono uppercase font-bold text-gray-800">
-                          {word}
-                        </span>
+                      <div key={word} className="brutal-card text-center p-3">
+                        <span className="brutal-text-md">{word}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Players who conquered these words */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {gamesForAttempts.map((game: any) => (
                       <div
                         key={game._id}
-                        className="flex items-center justify-between p-3 bg-white border rounded-lg"
+                        className="brutal-leaderboard-item flex items-center justify-between"
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400">•</span>
-                          <span className="font-medium text-gray-800">
-                            {game.displayName ||
-                              (game.isAnonymous
-                                ? "Anonymous Player"
-                                : game.playerName || "Player")}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            conquered "
-                            <span className="font-mono uppercase">
-                              {game.word}
+                        <div className="flex items-center gap-3">
+                          <span className="brutal-badge">•</span>
+                          <div>
+                            <span
+                              className="brutal-text-md"
+                              style={{ color: "var(--text-primary)" }}
+                            >
+                              {game.displayName ||
+                                (game.isAnonymous
+                                  ? "Anonymous Player"
+                                  : game.playerName || "Player")}
                             </span>
-                            "
-                          </span>
+                            <div
+                              className="text-sm"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              conquered "
+                              <span className="brutal-badge">{game.word}</span>"
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div
+                          className="text-xs"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
                           {formatTime(game.completedAt)}
                         </div>
                       </div>
@@ -297,32 +380,47 @@ export function Leaderboard({
       </div>
 
       {/* Recent Plays (all games) */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-800 text-center">
-          Recent Plays
-        </h2>
+      <div className="space-y-6">
+        <div className="brutal-card text-center">
+          <h2
+            className="brutal-text-lg"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Recent Plays
+          </h2>
+        </div>
         {leaderboard.recentPlays.length === 0 ? (
-          <div className="text-center text-gray-500">No games yet.</div>
+          <div
+            className="brutal-card text-center"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            No games yet.
+          </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {leaderboard.recentPlays.map((game: any) => (
               <div
                 key={game._id}
-                className="flex items-center justify-between p-3 bg-white border rounded-lg"
+                className="brutal-leaderboard-item flex items-center justify-between"
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-800">
+                <div className="flex items-center gap-3">
+                  <span
+                    className="brutal-text-md"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {game.displayName ||
                       (game.isAnonymous
                         ? "Anonymous Player"
                         : game.playerName || "Player")}
                   </span>
-                  <span className="text-sm text-gray-500">
-                    • Attempts: {game.attempts}
-                    {!game.completed ? "" : ""}
+                  <span className="brutal-badge secondary">
+                    {game.attempts} attempts
                   </span>
                 </div>
-                <div className="text-xs text-gray-400">
+                <div
+                  className="text-xs"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   {formatTime(game.completedAt)}
                 </div>
               </div>

@@ -286,9 +286,11 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
 
   if (!currentGame) {
     return (
-      <div className="text-center">
+      <div className="brutal-card text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-4"></div>
-        <p className="text-gray-600">Generating your impossible word...</p>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Generating your impossible word...
+        </p>
       </div>
     );
   }
@@ -299,7 +301,12 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
 
     if (letters.length === 0) {
       return (
-        <div className="text-center text-gray-500 mb-8">Loading word...</div>
+        <div
+          className="text-center mb-8"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Loading word...
+        </div>
       );
     }
 
@@ -311,12 +318,8 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
           return (
             <div
               key={index}
-              className={`w-12 h-12 border-2 flex items-center justify-center text-xl font-bold uppercase transition-all duration-200 ${
-                isRevealed
-                  ? "border-green-500 bg-green-100 text-green-800"
-                  : hasGuess
-                    ? "border-red-500 bg-red-100 text-red-800"
-                    : "border-gray-300 bg-white text-gray-400"
+              className={`brutal-word-box ${
+                isRevealed ? "correct" : hasGuess ? "filled" : "empty"
               }`}
             >
               {isRevealed ? letter : hasGuess ? currentGuess[index] : ""}
@@ -338,12 +341,21 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
 
     return (
       <div className="text-center mb-6">
-        <p className="text-sm text-gray-600 mb-3">Letters in the word:</p>
-        <div className="flex justify-center gap-1 flex-wrap">
+        <p
+          className="brutal-text-md mb-4"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Letters in the word:
+        </p>
+        <div className="flex justify-center gap-2 flex-wrap mb-4">
           {currentGame.shuffledLetters.map((letter, index) => (
             <span
               key={index}
-              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-lg font-mono uppercase border"
+              className="brutal-badge"
+              style={{
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+              }}
             >
               {letter}
             </span>
@@ -351,12 +363,27 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
         </div>
         {/* Error messages appear here instead of toasts */}
         {errorMessage && (
-          <div className="mt-3 px-4 py-2 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
-            {errorMessage}
+          <div className="brutal-card error mt-4">
+            <p
+              className="brutal-text-md"
+              style={{ color: "var(--text-inverse)" }}
+            >
+              {errorMessage}
+            </p>
           </div>
         )}
         {isSubmitting && (
-          <div className="mt-3 text-sm text-blue-600">Submitting guess...</div>
+          <div
+            className="brutal-card mt-4"
+            style={{ background: "var(--bg-surface)" }}
+          >
+            <p
+              className="brutal-text-md"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Submitting guess...
+            </p>
+          </div>
         )}
       </div>
     );
@@ -365,27 +392,42 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
   const renderSuggestions = () => {
     if (!suggestions || suggestions.length === 0) return null;
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-        <div className="text-sm text-blue-800 font-semibold mb-2">
+      <div
+        className="brutal-card mb-4"
+        style={{ background: "var(--bg-surface)" }}
+      >
+        <div
+          className="brutal-text-md mb-4"
+          style={{ color: "var(--text-primary)" }}
+        >
           Friend Suggestions:
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {suggestions.map((suggestion) => (
             <div
               key={suggestion._id}
-              className="flex items-center justify-between"
+              className="brutal-leaderboard-item flex items-center justify-between"
             >
-              <div className="text-sm">
-                <span className="font-mono uppercase text-blue-700">
+              <div>
+                <span
+                  className="brutal-badge mr-2"
+                  style={{
+                    background: "var(--bg-accent)",
+                    color: "var(--text-inverse)",
+                  }}
+                >
                   {suggestion.suggestion}
                 </span>
-                <span className="text-blue-600 ml-2">
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   from {suggestion.helperName}
                 </span>
               </div>
               <button
                 onClick={() => handleUseSuggestion(suggestion._id)}
-                className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                className="brutal-button secondary px-3 py-1 text-sm"
               >
                 Try
               </button>
@@ -398,9 +440,14 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
 
   const renderGameStatus = () => {
     return (
-      <div className="text-center space-y-4">
-        <p className="text-gray-600">Attempts: {currentGame.attempts}/3</p>
-        <p className="text-sm text-gray-500">
+      <div className="brutal-stats-card">
+        <p
+          className="brutal-text-lg mb-2"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Attempts: {currentGame.attempts}/3
+        </p>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
           Type the word. A full attempt is counted when you enter a complete
           word.
         </p>
@@ -414,45 +461,84 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     <div className="space-y-8">
       {renderLetterHints()}
       {currentGame.hint === "Generating hint..." && (
-        <div className="text-center">
-          <div className="text-sm text-blue-600">Hint is loading...</div>
+        <div
+          className="brutal-card text-center"
+          style={{ background: "var(--bg-surface)" }}
+        >
+          <div
+            className="brutal-text-md"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Hint is loading...
+          </div>
         </div>
       )}
       {currentGame.hint && currentGame.hint !== "Generating hint..." && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <div className="text-sm text-yellow-800 font-semibold mb-1">
+        <div
+          className="brutal-card text-center"
+          style={{ background: "var(--bg-warning)" }}
+        >
+          <div
+            className="brutal-text-md mb-2"
+            style={{ color: "var(--text-primary)" }}
+          >
             Hint:
           </div>
-          <div className="text-yellow-700">{currentGame.hint}</div>
+          <div
+            className="brutal-text-md"
+            style={{ color: "var(--text-primary)" }}
+          >
+            {currentGame.hint}
+          </div>
         </div>
       )}
       {renderSuggestions()}
       {currentGame.attempts === 2 && currentGame.canPlay && !showWrong && (
-        <div className="space-y-3">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600 mb-2">
-              Last Chance!
-            </div>
-            {timeRemaining !== null && (
-              <div className="space-y-2">
-                <div className="text-sm text-red-600">
-                  Time remaining: {Math.ceil(timeRemaining / 1000)}s
-                </div>
-                <div className="w-full bg-red-200 rounded-full h-2">
-                  <div
-                    className="bg-red-600 h-2 rounded-full transition-all duration-100"
-                    style={{ width: `${(timeRemaining / 60000) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
+        <div
+          className="brutal-card text-center"
+          style={{ background: "var(--bg-error)" }}
+        >
+          <div
+            className="brutal-text-xl mb-4"
+            style={{ color: "var(--text-inverse)" }}
+          >
+            Last Chance!
           </div>
+          {timeRemaining !== null && (
+            <div className="space-y-3">
+              <div
+                className="brutal-text-md"
+                style={{ color: "var(--text-inverse)" }}
+              >
+                Time remaining: {Math.ceil(timeRemaining / 1000)}s
+              </div>
+              <div
+                className="brutal-container h-4"
+                style={{ background: "var(--bg-secondary)" }}
+              >
+                <div
+                  className="h-full transition-all duration-100"
+                  style={{
+                    width: `${(timeRemaining / 60000) * 100}%`,
+                    background: "var(--bg-accent)",
+                    borderRadius: "var(--border-radius)",
+                  }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       <div className={isGameOver ? "" : ""}>{renderWordDisplay()}</div>
       {showWrong && (
-        <div className="text-center">
-          <span className="text-2xl font-bold text-red-600 animate-pulse">
+        <div
+          className="brutal-card text-center"
+          style={{ background: "var(--bg-error)" }}
+        >
+          <span
+            className="brutal-text-xl animate-pulse"
+            style={{ color: "var(--text-inverse)" }}
+          >
             WRONG
           </span>
         </div>
@@ -466,42 +552,43 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
               value={currentInput}
               onChange={(e) => handleInputChange(e.target.value)}
               disabled={isSubmitting || isGameOver}
-              className="w-full px-4 py-3 text-center text-xl font-mono uppercase border-2 border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none transition-colors disabled:opacity-50"
+              className="brutal-input w-full text-center text-xl disabled:opacity-50"
               placeholder="Type the word..."
               maxLength={currentGame.word.length}
             />
           </div>
           {/* Invite Friend Button */}
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-4">
             {!inviteLink ? (
               <button
                 onClick={handleCreateInvite}
                 disabled={isCreatingInvite || isGameOver}
-                className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                className="brutal-button px-6 py-3 disabled:opacity-50"
               >
                 {isCreatingInvite ? "Creating invite..." : "Invite a Friend"}
               </button>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg">
+              <div className="brutal-card">
+                <div className="flex items-center gap-2 mb-3">
                   <input
                     type="text"
                     value={inviteLink}
                     readOnly
-                    className="flex-1 px-2 py-1 text-xs bg-white border border-gray-300 rounded"
+                    className="brutal-input flex-1 text-xs"
                   />
                   <button
                     onClick={handleCopyLink}
-                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                      showCopySuccess
-                        ? "bg-green-600 text-white"
-                        : "bg-black text-white hover:bg-gray-800"
+                    className={`brutal-button px-3 py-2 text-xs ${
+                      showCopySuccess ? "success" : ""
                     }`}
                   >
                     {showCopySuccess ? "✓ Copied!" : "📋 Copy"}
                   </button>
                 </div>
-                <p className="text-xs text-gray-600">
+                <p
+                  className="text-sm"
+                  style={{ color: "var(--text-secondary)" }}
+                >
                   Share this link with a friend to get help!
                 </p>
               </div>
@@ -514,7 +601,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
                 disabled={
                   currentGame.hint === "Generating hint..." || isGameOver
                 }
-                className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                className="brutal-button warning px-6 py-3 disabled:opacity-50"
               >
                 {currentGame.hint === "Generating hint..."
                   ? "Getting hint..."
