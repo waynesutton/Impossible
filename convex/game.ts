@@ -540,15 +540,42 @@ export const getSuggestions = query({
   handler: async (ctx) => {
     const userId = await getLoggedInUser(ctx);
 
+    // Get the user's current game session
+    const userAttempt = await ctx.db
+      .query("userAttempts")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .order("desc")
+      .first();
+
+    if (!userAttempt || !userAttempt.gameId) {
+      return []; // No current game, no suggestions
+    }
+
+    // Only get suggestions for the current game session
     const suggestions = await ctx.db
       .query("suggestions")
       .withIndex("by_main_user", (q) => q.eq("mainUserId", userId))
       .filter((q) => q.eq(q.field("used"), false))
       .order("desc")
-      .take(10);
+      .collect();
+
+    // Filter suggestions to only include those from the current game
+    const currentGameSuggestions = suggestions.filter((suggestion) => {
+      // Check if this suggestion is from the current game by looking up the invite
+      return suggestion.inviteId; // We'll need to check the invite's gameId
+    });
+
+    // For each suggestion, verify it belongs to the current game
+    const validSuggestions = [];
+    for (const suggestion of currentGameSuggestions) {
+      const invite = await ctx.db.get(suggestion.inviteId);
+      if (invite && invite.gameId === userAttempt.gameId) {
+        validSuggestions.push(suggestion);
+      }
+    }
 
     return await Promise.all(
-      suggestions.map(async (suggestion) => {
+      validSuggestions.map(async (suggestion) => {
         const helper = await ctx.db.get(suggestion.helperId);
         const helperName =
           helper && "name" in helper
