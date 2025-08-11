@@ -88,7 +88,7 @@ export function Leaderboard() {
         </div>
       )}
 
-      {/* Recent Victories */}
+      {/* Winners Hall of Fame */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold text-gray-800 text-center">
           Winners Hall of Fame
@@ -104,10 +104,9 @@ export function Leaderboard() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Group winners by attempts */}
             {[1, 2, 3].map((attemptCount) => {
               const gamesForAttempts = leaderboard.completedGames.filter(
-                (game) => game.attempts === attemptCount,
+                (game: any) => game.attempts === attemptCount,
               );
               if (gamesForAttempts.length === 0) return null;
 
@@ -134,10 +133,12 @@ export function Leaderboard() {
                     </div>
                   </div>
 
-                  {/* Show words conquered in this attempt count */}
+                  {/* Words conquered in this attempt count */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                     {[
-                      ...new Set(gamesForAttempts.map((game) => game.word)),
+                      ...new Set(
+                        gamesForAttempts.map((game: any) => game.word),
+                      ),
                     ].map((word) => (
                       <div
                         key={word}
@@ -150,9 +151,9 @@ export function Leaderboard() {
                     ))}
                   </div>
 
-                  {/* Show players who conquered these words */}
+                  {/* Players who conquered these words */}
                   <div className="space-y-2">
-                    {gamesForAttempts.map((game, index) => (
+                    {gamesForAttempts.map((game: any) => (
                       <div
                         key={game._id}
                         className="flex items-center justify-between p-3 bg-white border rounded-lg"
@@ -182,6 +183,41 @@ export function Leaderboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Plays (all games) */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-gray-800 text-center">
+          Recent Plays
+        </h2>
+        {leaderboard.recentPlays.length === 0 ? (
+          <div className="text-center text-gray-500">No games yet.</div>
+        ) : (
+          <div className="space-y-2">
+            {leaderboard.recentPlays.map((game: any) => (
+              <div
+                key={game._id}
+                className="flex items-center justify-between p-3 bg-white border rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-800">
+                    {game.displayName ||
+                      (game.isAnonymous
+                        ? "Anonymous Player"
+                        : game.playerName || "Player")}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    • Attempts: {game.attempts}
+                    {!game.completed ? "" : ""}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-400">
+                  {formatTime(game.completedAt)}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

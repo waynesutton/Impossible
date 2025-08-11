@@ -19,23 +19,32 @@ async function getLoggedInUser(ctx: any) {
 export const getLeaderboard = query({
   args: {},
   handler: async (ctx) => {
-    // Get only won games (where completed = true means they guessed correctly)
-    const wonGames = await ctx.db
+    // Winners (completed = true)
+    const completedGames = await ctx.db
       .query("gameResults")
       .withIndex("by_completed_and_time", (q) => q.eq("completed", true))
       .order("desc")
-      .take(50); // Limit to top 50 for performance
+      .take(50);
 
-    // Get all games (completed and failed) for total stats
-    const allGames = await ctx.db.query("gameResults").order("desc").take(100);
+    // Recent plays (any games), newest first
+    const recentPlays = await ctx.db
+      .query("gameResults")
+      .order("desc")
+      .take(50);
+
+    // Global totals
+    const totalGames = (
+      await ctx.db.query("gameResults").order("desc").take(200)
+    ).length;
 
     return {
-      completedGames: wonGames,
-      totalGames: allGames.length,
-      totalCompleted: wonGames.length,
+      completedGames,
+      recentPlays,
+      totalGames,
+      totalCompleted: completedGames.length,
       successRate:
-        allGames.length > 0
-          ? Math.round((wonGames.length / allGames.length) * 100)
+        totalGames > 0
+          ? Math.round((completedGames.length / totalGames) * 100)
           : 0,
     };
   },
@@ -45,28 +54,25 @@ export const getUserStats = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getLoggedInUser(ctx);
-    if (!userId) {
-      return null;
-    }
+    if (!userId) return null;
 
     const userGames = await ctx.db
       .query("gameResults")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
-    const completedGames = userGames.filter((game) => game.completed);
-    const totalGames = userGames.length;
+    const completed = userGames.filter((g) => g.completed);
 
     return {
-      totalGames,
-      completedGames: completedGames.length,
+      totalGames: userGames.length,
+      completedGames: completed.length,
       successRate:
-        totalGames > 0
-          ? Math.round((completedGames.length / totalGames) * 100)
+        userGames.length > 0
+          ? Math.round((completed.length / userGames.length) * 100)
           : 0,
       bestAttempts:
-        completedGames.length > 0
-          ? Math.min(...completedGames.map((g) => g.attempts))
+        completed.length > 0
+          ? Math.min(...completed.map((g) => g.attempts))
           : null,
     };
   },

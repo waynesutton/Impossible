@@ -66,7 +66,7 @@ export default function App() {
                 Begin
               </button>
 
-              {/* Game Instructions */}
+              {/* How to Play */}
               <div className="mt-8 text-left bg-gray-100 rounded-lg p-6 space-y-3">
                 <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">
                   How to Play
@@ -74,10 +74,6 @@ export default function App() {
                 <div className="space-y-2 text-sm text-gray-700">
                   <p>
                     <strong>🎯 Goal:</strong> Guess the impossible word
-                  </p>
-                  <p>
-                    <strong>📝 Rules:</strong> Type letter by letter - wrong
-                    letters reset your progress
                   </p>
                   <p>
                     <strong>🔢 Attempts:</strong> You get 3 tries to solve it

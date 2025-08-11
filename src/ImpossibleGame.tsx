@@ -35,14 +35,14 @@ export function ImpossibleGame() {
     }
   }, [currentGame?.currentGuess]);
 
-  // Auto-focus input
+  // Auto-focus input when playable
   useEffect(() => {
     if (inputRef.current && currentGame?.canPlay) {
       inputRef.current.focus();
     }
   }, [currentGame?.canPlay]);
 
-  // Start new game if no current game (but don't auto-start if we have a completed game)
+  // Start new game if no current game (only when currentGame is null)
   useEffect(() => {
     if (currentGame === null) {
       startNewGame();
@@ -111,51 +111,24 @@ export function ImpossibleGame() {
       .slice(0, currentGame.word.length);
     setCurrentInput(cleanValue);
 
-    // Update in database
+    // Persist current guess for realtime sync
     await updateGuess({ guess: cleanValue });
 
-    // Check for wrong letters
+    // Only submit when they've typed a complete word
     const targetWord = currentGame.word.toLowerCase();
-    for (let i = 0; i < cleanValue.length; i++) {
-      if (cleanValue[i] !== targetWord[i]) {
-        setShowWrong(true);
-        setTimeout(() => {
-          setShowWrong(false);
-          setCurrentInput("");
-          updateGuess({ guess: "" });
-        }, 1000);
-
-        // Submit as failed attempt
-        try {
-          setIsSubmitting(true);
-          const result = await submitGuess({ guess: cleanValue });
-          if (!result.correct) {
-            toast.error(`Wrong! Keep trying!`);
-          }
-        } catch (error) {
-          toast.error("Failed to submit guess");
-        } finally {
-          setIsSubmitting(false);
-        }
-        return;
-      }
-    }
-
-    // If they've typed the complete word correctly
-    if (cleanValue.length === targetWord.length && cleanValue === targetWord) {
+    if (cleanValue.length === targetWord.length) {
       try {
         setIsSubmitting(true);
         const result = await submitGuess({ guess: cleanValue });
         if (result.correct) {
-          // Trigger confetti
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-          });
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
           toast.success("Incredible! You solved the impossible! 🎉");
+        } else {
+          toast.error("Not it. Try another word!");
+          setCurrentInput("");
+          await updateGuess({ guess: "" });
         }
-      } catch (error) {
+      } catch (_error) {
         toast.error("Failed to submit guess");
       } finally {
         setIsSubmitting(false);
@@ -168,7 +141,7 @@ export function ImpossibleGame() {
       setIsGettingHint(true);
       await requestHint();
       toast.success("Hint requested! Check back in a moment.");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Hints only available after 2 attempts");
     } finally {
       setIsGettingHint(false);
@@ -182,7 +155,7 @@ export function ImpossibleGame() {
       const link = `${window.location.origin}?invite=${inviteId}`;
       setInviteLink(link);
       toast.success("Invite link created!");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to create invite link");
     } finally {
       setIsCreatingInvite(false);
@@ -197,8 +170,7 @@ export function ImpossibleGame() {
       setShowCopySuccess(true);
       toast.success("Link copied to clipboard!");
       setTimeout(() => setShowCopySuccess(false), 2000);
-    } catch (error) {
-      // Fallback for mobile browsers that don't support clipboard API
+    } catch (_error) {
       const textArea = document.createElement("textarea");
       textArea.value = inviteLink;
       document.body.appendChild(textArea);
@@ -218,7 +190,7 @@ export function ImpossibleGame() {
       });
       await handleInputChange(suggestion);
       toast.info("Using friend's suggestion!");
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to use suggestion");
     }
   };
@@ -233,14 +205,13 @@ export function ImpossibleGame() {
   };
 
   const handleSkipNameEntry = async () => {
-    // Save as anonymous player to leaderboard
     await updateDisplayName({ displayName: "Anonymous" });
     setShowNameEntry(false);
     toast.info("Added as anonymous player!");
   };
 
   const handleStartNewGame = async () => {
-    // Reset all component state
+    // Reset component state
     setCurrentInput("");
     setInviteLink(null);
     setShowNameEntry(false);
@@ -252,7 +223,6 @@ export function ImpossibleGame() {
     setTimeRemaining(null);
     setShowCopySuccess(false);
 
-    // Start new game
     await startNewGame();
     toast.info("Starting new game with a fresh word!");
   };
@@ -267,15 +237,20 @@ export function ImpossibleGame() {
   }
 
   const renderWordDisplay = () => {
-    const letters = currentGame.letters;
+    const letters = currentGame.letters || [];
     const currentGuess = currentInput.toLowerCase();
+
+    if (letters.length === 0) {
+      return (
+        <div className="text-center text-gray-500 mb-8">Loading word...</div>
+      );
+    }
 
     return (
       <div className="flex justify-center gap-2 mb-8">
         {letters.map((letter, index) => {
           const isRevealed = currentGuess[index] === letter;
           const hasGuess = currentGuess[index];
-
           return (
             <div
               key={index}
@@ -295,29 +270,23 @@ export function ImpossibleGame() {
     );
   };
 
+  // Show shuffled letters as clues above the word boxes
   const renderLetterHints = () => {
     if (
       !currentGame.shuffledLetters ||
       currentGame.shuffledLetters.length === 0
     ) {
-      return (
-        <div className="text-center mb-6">
-          <p className="text-sm text-gray-500 mb-2">Letters in the word:</p>
-          <div className="text-center py-4">
-            <p className="text-gray-500 text-sm">Loading letters...</p>
-          </div>
-        </div>
-      );
+      return null;
     }
 
     return (
       <div className="text-center mb-6">
-        <p className="text-sm text-gray-500 mb-2">Letters in the word:</p>
+        <p className="text-sm text-gray-600 mb-3">Letters in the word:</p>
         <div className="flex justify-center gap-1 flex-wrap">
           {currentGame.shuffledLetters.map((letter, index) => (
             <span
               key={index}
-              className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-sm font-mono uppercase"
+              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-lg font-mono uppercase border"
             >
               {letter}
             </span>
@@ -329,7 +298,6 @@ export function ImpossibleGame() {
 
   const renderSuggestions = () => {
     if (!suggestions || suggestions.length === 0) return null;
-
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
         <div className="text-sm text-blue-800 font-semibold mb-2">
@@ -370,7 +338,6 @@ export function ImpossibleGame() {
             🎉 Congratulations!
           </div>
           <p className="text-gray-600">You guessed the impossible word!</p>
-
           {showNameEntry && (
             <div className="space-y-3 mt-4">
               <p className="text-sm text-gray-600">Add your name (optional):</p>
@@ -401,7 +368,6 @@ export function ImpossibleGame() {
               </form>
             </div>
           )}
-
           <button
             onClick={handleStartNewGame}
             className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -421,7 +387,6 @@ export function ImpossibleGame() {
             The word was:{" "}
             <span className="font-bold uppercase">{currentGame.word}</span>
           </p>
-
           {showNameEntry && (
             <div className="space-y-3 mt-4">
               <p className="text-sm text-gray-600">Add your name (optional):</p>
@@ -452,7 +417,6 @@ export function ImpossibleGame() {
               </form>
             </div>
           )}
-
           <button
             onClick={handleStartNewGame}
             className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -467,7 +431,8 @@ export function ImpossibleGame() {
       <div className="text-center space-y-4">
         <p className="text-gray-600">Attempts: {currentGame.attempts}/3</p>
         <p className="text-sm text-gray-500">
-          Type the word letter by letter. Wrong letters reset your progress.
+          Type the word. A full attempt is counted when you enter a complete
+          word.
         </p>
       </div>
     );
@@ -478,14 +443,11 @@ export function ImpossibleGame() {
   return (
     <div className="space-y-8">
       {renderLetterHints()}
-
-      {/* Hint display right below letters */}
       {currentGame.hint === "Generating hint..." && (
         <div className="text-center">
           <div className="text-sm text-blue-600">Hint is loading...</div>
         </div>
       )}
-
       {currentGame.hint && currentGame.hint !== "Generating hint..." && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
           <div className="text-sm text-yellow-800 font-semibold mb-1">
@@ -494,10 +456,7 @@ export function ImpossibleGame() {
           <div className="text-yellow-700">{currentGame.hint}</div>
         </div>
       )}
-
       {renderSuggestions()}
-
-      {/* Last chance warning and timer */}
       {currentGame.attempts === 2 && currentGame.canPlay && !showWrong && (
         <div className="space-y-3">
           <div className="text-center">
@@ -520,9 +479,7 @@ export function ImpossibleGame() {
           </div>
         </div>
       )}
-
       <div className={isGameOver ? "" : ""}>{renderWordDisplay()}</div>
-
       {showWrong && (
         <div className="text-center">
           <span className="text-2xl font-bold text-red-600 animate-pulse">
@@ -530,7 +487,6 @@ export function ImpossibleGame() {
           </span>
         </div>
       )}
-
       {currentGame.canPlay && !showWrong && (
         <div className="space-y-4">
           <div className="relative">
@@ -545,7 +501,6 @@ export function ImpossibleGame() {
               maxLength={currentGame.word.length}
             />
           </div>
-
           {/* Invite Friend Button */}
           <div className="text-center space-y-2">
             {!inviteLink ? (
@@ -582,8 +537,6 @@ export function ImpossibleGame() {
               </div>
             )}
           </div>
-
-          {/* Help button appears after 2 attempts */}
           {currentGame.attempts >= 2 && (
             <div className="text-center">
               <button
@@ -601,7 +554,6 @@ export function ImpossibleGame() {
           )}
         </div>
       )}
-
       <div>{renderGameStatus()}</div>
     </div>
   );

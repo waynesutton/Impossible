@@ -44,15 +44,18 @@ export const getCurrentGame = query({
   handler: async (ctx) => {
     const userId = await getLoggedInUser(ctx);
 
-    // Get user's most recent game attempt
-    const userAttempt = await ctx.db
+    // Get all user attempts, ordered by most recent
+    const userAttempts = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
-      .first();
+      .take(10);
 
-    if (!userAttempt || !userAttempt.gameId) {
-      return null; // No game at all
+    // First try to find an active (not completed) game
+    let userAttempt = userAttempts.find((attempt) => !attempt.completed);
+
+    if (!userAttempt) {
+      return null; // No active game at all
     }
 
     // Get the game word
@@ -62,7 +65,7 @@ export const getCurrentGame = query({
       .unique();
 
     if (!gameWord) {
-      return null;
+      return null; // Word is still being generated
     }
 
     return {
@@ -116,7 +119,7 @@ export const updateCurrentGuess = mutation({
 
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .first();
 
@@ -137,7 +140,7 @@ export const submitGuess = mutation({
 
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .first();
 
@@ -156,8 +159,8 @@ export const submitGuess = mutation({
 
     const currentAttempts = userAttempt.attempts || 0;
 
-    if (userAttempt.completed) {
-      throw new Error("Already completed this game");
+    if (userAttempt.completed || currentAttempts >= 3) {
+      throw new Error("Game already completed or max attempts reached");
     }
 
     const isCorrect = args.guess.toLowerCase() === gameWord.word.toLowerCase();
@@ -210,7 +213,7 @@ export const requestHint = mutation({
 
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .first();
 
@@ -284,7 +287,7 @@ export const saveHint = internalMutation({
   handler: async (ctx, args) => {
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("userId"), args.userId))
       .order("desc")
       .first();
 
@@ -305,7 +308,7 @@ export const updateDisplayName = mutation({
 
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .first();
 
@@ -344,7 +347,7 @@ export const createInviteLink = mutation({
 
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .first();
 
@@ -446,10 +449,13 @@ export const getHelperState = query({
     if (helper.gameId) {
       mainUserAttempt = await ctx.db
         .query("userAttempts")
-        .withIndex("by_user_and_game", (q) =>
-          q.eq("userId", helper.mainUserId).eq("gameId", helper.gameId!),
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("userId"), helper.mainUserId),
+            q.eq(q.field("gameId"), helper.gameId!),
+          ),
         )
-        .unique();
+        .first();
     }
 
     const mainUserGameOver =
@@ -567,7 +573,7 @@ export const startThirdAttemptTimer = mutation({
 
     const userAttempt = await ctx.db
       .query("userAttempts")
-      .withIndex("by_user_and_game", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .order("desc")
       .first();
 
