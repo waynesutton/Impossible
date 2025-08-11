@@ -1,9 +1,41 @@
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 
-export function Leaderboard() {
+interface GameCompletionData {
+  won: boolean;
+  word: string;
+  attempts: number;
+}
+
+interface LeaderboardProps {
+  gameCompletionData?: GameCompletionData | null;
+  onStartNewGame?: () => void;
+}
+
+export function Leaderboard({
+  gameCompletionData,
+  onStartNewGame,
+}: LeaderboardProps) {
   const leaderboard = useQuery(api.leaderboard.getLeaderboard);
   const userStats = useQuery(api.leaderboard.getUserStats);
+  const updateDisplayName = useMutation(api.game.updateDisplayName);
+
+  const [showNameEntry, setShowNameEntry] = useState(!!gameCompletionData);
+  const [displayName, setDisplayName] = useState("");
+
+  const handleNameSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (displayName.trim()) {
+      await updateDisplayName({ displayName: displayName.trim() });
+    }
+    setShowNameEntry(false);
+  };
+
+  const handleSkipNameEntry = async () => {
+    await updateDisplayName({ displayName: "Anonymous" });
+    setShowNameEntry(false);
+  };
 
   if (!leaderboard) {
     return (
@@ -30,6 +62,83 @@ export function Leaderboard() {
 
   return (
     <div className="space-y-6">
+      {/* Game Completion Section */}
+      {gameCompletionData && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+          {gameCompletionData.won ? (
+            <div className="space-y-4">
+              <div className="text-3xl font-bold text-green-600">
+                🎉 Congratulations!
+              </div>
+              <p className="text-gray-600">You guessed the impossible word!</p>
+              <p className="text-lg font-mono uppercase font-bold text-gray-800">
+                {gameCompletionData.word}
+              </p>
+              <p className="text-sm text-gray-500">
+                Solved in {gameCompletionData.attempts} attempts
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-2xl font-bold text-red-600">Game Over</div>
+              <p className="text-gray-600">You've used all 3 attempts!</p>
+              <p className="text-sm text-gray-500">
+                The word was:{" "}
+                <span className="font-bold uppercase font-mono">
+                  {gameCompletionData.word}
+                </span>
+              </p>
+            </div>
+          )}
+
+          {/* Name Entry Form */}
+          {showNameEntry && (
+            <div className="mt-6 space-y-4">
+              <p className="text-sm text-gray-600">
+                Add your name to the leaderboard (optional):
+              </p>
+              <form onSubmit={handleNameSubmit} className="space-y-3">
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none"
+                  maxLength={20}
+                />
+                <div className="flex gap-2 justify-center">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkipNameEntry}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Skip
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Start New Game Button - shown after name entry or always if no name entry */}
+          {!showNameEntry && onStartNewGame && (
+            <div className="mt-6">
+              <button
+                onClick={onStartNewGame}
+                className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-lg font-medium"
+              >
+                Start New Game
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Leaderboard</h1>
         <p className="text-gray-600">

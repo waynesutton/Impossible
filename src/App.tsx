@@ -5,17 +5,42 @@ import { api } from "../convex/_generated/api";
 import { Leaderboard } from "./Leaderboard";
 import { ImpossibleGame } from "./ImpossibleGame";
 
+interface GameCompletionData {
+  won: boolean;
+  word: string;
+  attempts: number;
+}
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState<
     "game" | "leaderboard" | "playing"
   >("game");
+  const [gameCompletionData, setGameCompletionData] =
+    useState<GameCompletionData | null>(null);
   const startNewGame = useMutation(api.game.startNewGame);
 
   const handleBeginGame = async () => {
     try {
       await startNewGame();
       setCurrentPage("playing");
+      setGameCompletionData(null); // Clear any previous completion data
       console.log("New game started!");
+    } catch (error) {
+      console.error("Failed to start new game:", error);
+    }
+  };
+
+  const handleGameComplete = (data: GameCompletionData) => {
+    console.log("Game completed:", data);
+    setGameCompletionData(data);
+    setCurrentPage("leaderboard");
+  };
+
+  const handleStartNewGameFromLeaderboard = async () => {
+    try {
+      await startNewGame();
+      setGameCompletionData(null);
+      setCurrentPage("playing");
     } catch (error) {
       console.error("Failed to start new game:", error);
     }
@@ -38,7 +63,10 @@ export default function App() {
             Game
           </button>
           <button
-            onClick={() => setCurrentPage("leaderboard")}
+            onClick={() => {
+              setCurrentPage("leaderboard");
+              setGameCompletionData(null); // Clear completion data when manually navigating to leaderboard
+            }}
             className={`px-3 py-1 rounded transition-colors ${
               currentPage === "leaderboard"
                 ? "bg-black text-white"
@@ -97,9 +125,12 @@ export default function App() {
               </div>
             </div>
           ) : currentPage === "playing" ? (
-            <ImpossibleGame />
+            <ImpossibleGame onGameComplete={handleGameComplete} />
           ) : (
-            <Leaderboard />
+            <Leaderboard
+              gameCompletionData={gameCompletionData}
+              onStartNewGame={handleStartNewGameFromLeaderboard}
+            />
           )}
         </div>
       </main>

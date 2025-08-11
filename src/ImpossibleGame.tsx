@@ -4,7 +4,15 @@ import { api } from "../convex/_generated/api";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 
-export function ImpossibleGame() {
+interface ImpossibleGameProps {
+  onGameComplete?: (gameData: {
+    won: boolean;
+    word: string;
+    attempts: number;
+  }) => void;
+}
+
+export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
   const currentGame = useQuery(api.game.getCurrentGame);
   const suggestions = useQuery(api.game.getSuggestions);
   const updateGuess = useMutation(api.game.updateCurrentGuess);
@@ -95,27 +103,7 @@ export function ImpossibleGame() {
     submitGuess,
   ]);
 
-  // Show name entry when game completes (win or loss)
-  useEffect(() => {
-    console.log("Game completion useEffect triggered", {
-      completed: currentGame?.completed,
-      showNameEntry,
-      attempts: currentGame?.attempts,
-      won: currentGame?.won,
-      canPlay: currentGame?.canPlay,
-    });
-
-    if (currentGame?.completed && !showNameEntry) {
-      console.log("✅ Game completed, showing name entry", {
-        completed: currentGame.completed,
-        won: currentGame.won,
-        attempts: currentGame.attempts,
-      });
-      setShowNameEntry(true);
-      setErrorMessage(null); // Clear any error messages when game completes
-      setCurrentInput(""); // Clear input when game completes
-    }
-  }, [currentGame?.completed, showNameEntry]);
+  // No longer need game completion useEffect since we redirect to leaderboard
 
   const handleInputChange = async (value: string) => {
     if (!currentGame) return;
@@ -150,21 +138,26 @@ export function ImpossibleGame() {
 
         if (result.correct) {
           confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+          // If correct, redirect to leaderboard after a brief celebration
+          setTimeout(() => {
+            onGameComplete?.({
+              won: true,
+              word: cleanValue,
+              attempts: currentGame.attempts + 1,
+            });
+          }, 2000);
         } else {
           // Check if this was the final attempt (attemptsRemaining will be 0)
           if (result.attemptsRemaining === 0) {
-            console.log("🎯 Final attempt - game should complete now");
-            // Game is over - don't show "try another word", let the completion flow handle it
-            setCurrentInput("");
-            await updateGuess({ guess: "" });
-
-            // Force show name entry since this is the final attempt
-            // In case the useEffect doesn't trigger immediately due to Convex query delay
-            setTimeout(() => {
-              console.log("🔄 Forcing name entry after 500ms delay");
-              setShowNameEntry(true);
-              setErrorMessage(null);
-            }, 500);
+            console.log(
+              "🎯 Final attempt - game over, redirecting to leaderboard",
+            );
+            // Game is over - redirect to leaderboard immediately
+            onGameComplete?.({
+              won: false,
+              word: currentGame.word,
+              attempts: 3,
+            });
           } else {
             console.log(`❌ Wrong attempt ${3 - result.attemptsRemaining}/3`);
             setErrorMessage("Not it. Try another word!");
@@ -380,46 +373,6 @@ export function ImpossibleGame() {
   };
 
   const renderGameStatus = () => {
-    if (currentGame.completed && currentGame.won) {
-      return (
-        <div className="text-center space-y-4">
-          <div className="text-2xl font-bold text-green-600">
-            🎉 Congratulations!
-          </div>
-          <p className="text-gray-600">You guessed the impossible word!</p>
-          {!showNameEntry && (
-            <button
-              onClick={handleStartNewGame}
-              className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              Start New Game
-            </button>
-          )}
-        </div>
-      );
-    }
-
-    if (currentGame.completed && !currentGame.won) {
-      return (
-        <div className="text-center space-y-4">
-          <div className="text-xl font-bold text-red-600">Game Over</div>
-          <p className="text-gray-600">You've used all 3 attempts!</p>
-          <p className="text-sm text-gray-500">
-            The word was:{" "}
-            <span className="font-bold uppercase">{currentGame.word}</span>
-          </p>
-          {!showNameEntry && (
-            <button
-              onClick={handleStartNewGame}
-              className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-            >
-              Start New Game
-            </button>
-          )}
-        </div>
-      );
-    }
-
     return (
       <div className="text-center space-y-4">
         <p className="text-gray-600">Attempts: {currentGame.attempts}/3</p>
@@ -435,40 +388,6 @@ export function ImpossibleGame() {
 
   return (
     <div className="space-y-8">
-      {/* Name entry at top when game completes */}
-      {showNameEntry && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-          <p className="text-sm text-gray-600 mb-3">
-            Add your name to the leaderboard (optional):
-          </p>
-          <form onSubmit={handleNameSubmit} className="space-y-3">
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none"
-              maxLength={20}
-            />
-            <div className="flex gap-2 justify-center">
-              <button
-                type="submit"
-                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={handleSkipNameEntry}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Skip
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
       {renderLetterHints()}
       {currentGame.hint === "Generating hint..." && (
         <div className="text-center">
