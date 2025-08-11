@@ -21,17 +21,45 @@ export default function App() {
   const [gameCompletionData, setGameCompletionData] =
     useState<GameCompletionData | null>(null);
   const [inviteId, setInviteId] = useState<Id<"invites"> | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const startNewGame = useMutation(api.game.startNewGame);
+  const trackEvent = useMutation(api.leaderboard.trackEvent);
 
-  // Check for invite parameter on load
+  // Track homepage view and check for invite parameter on load
   useEffect(() => {
+    // Generate a simple session ID based on timestamp and random number
+    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+    // Track homepage view
+    trackEvent({ eventType: "homepage_view", sessionId }).catch((error) => {
+      console.error("Failed to track homepage view:", error);
+    });
+
     const params = new URLSearchParams(window.location.search);
     const invite = params.get("invite");
     if (invite) {
       setInviteId(invite as Id<"invites">);
       setCurrentPage("helper");
     }
+  }, [trackEvent]);
+
+  // Close mobile menu when screen size changes or page changes
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        // md breakpoint
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Close mobile menu when page changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [currentPage]);
 
   const handleBeginGame = async () => {
     try {
@@ -72,7 +100,9 @@ export default function App() {
         >
           Impossible
         </a>
-        <div className="flex items-center gap-4">
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-4">
           <nav className="flex gap-2">
             <button
               onClick={() => setCurrentPage("game")}
@@ -96,7 +126,64 @@ export default function App() {
           </nav>
           <ThemeSwitcher />
         </div>
+
+        {/* Mobile Hamburger Menu */}
+        <div className="md:hidden">
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="hamburger-button"
+            aria-label="Toggle mobile menu"
+          >
+            <div className={`hamburger-icon ${isMobileMenuOpen ? "open" : ""}`}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+        </div>
       </header>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="mobile-menu-overlay md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+            <nav className="mobile-nav">
+              <button
+                onClick={() => {
+                  setCurrentPage("game");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`mobile-nav-button ${
+                  currentPage === "game" ? "active" : ""
+                }`}
+              >
+                Game
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentPage("leaderboard");
+                  setGameCompletionData(null);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`mobile-nav-button ${
+                  currentPage === "leaderboard" ? "active" : ""
+                }`}
+              >
+                Leaderboard
+              </button>
+            </nav>
+
+            {/* Theme Switcher in Mobile Menu */}
+            <div className="mobile-theme-section">
+              <h3 className="mobile-theme-title">Theme</h3>
+              <ThemeSwitcher />
+            </div>
+          </div>
+        </div>
+      )}
       <main className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md mx-auto">
           {currentPage === "game" ? (

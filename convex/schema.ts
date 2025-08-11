@@ -75,6 +75,13 @@ const applicationTables = {
   })
     .index("by_main_user", ["mainUserId"])
     .index("by_invite", ["inviteId"]),
+
+  analytics: defineTable({
+    eventType: v.string(), // "homepage_view" or "game_started"
+    userId: v.optional(v.id("users")), // Optional for anonymous tracking
+    timestamp: v.number(),
+    sessionId: v.optional(v.string()), // Track unique sessions
+  }).index("by_event_type", ["eventType"]),
 };
 
 export default defineSchema({

@@ -19,6 +19,7 @@ export function Leaderboard({
 }: LeaderboardProps) {
   const leaderboard = useQuery(api.leaderboard.getLeaderboard);
   const userStats = useQuery(api.leaderboard.getUserStats);
+  const analytics = useQuery(api.leaderboard.getAnalytics);
   const updateDisplayName = useMutation(api.game.updateDisplayName);
 
   const [showNameEntry, setShowNameEntry] = useState(!!gameCompletionData);
@@ -428,6 +429,50 @@ export function Leaderboard({
           </div>
         )}
       </div>
+
+      {/* Analytics Section */}
+      {analytics && (
+        <div className="brutal-card text-center mt-8 py-4">
+          <div className="mb-3">
+            <h3
+              className="brutal-text-md"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Site Analytics
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="brutal-stats-card">
+              <div
+                className="brutal-text-lg"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {analytics.totalGamesPlayed.toLocaleString()}
+              </div>
+              <div
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Games Played
+              </div>
+            </div>
+            <div className="brutal-stats-card">
+              <div
+                className="brutal-text-lg"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {analytics.totalHomepageViews.toLocaleString()}
+              </div>
+              <div
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Homepage Views
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
