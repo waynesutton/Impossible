@@ -141,6 +141,12 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
       .toLowerCase()
       .replace(/[^a-z]/g, "")
       .slice(0, currentGame.word.length);
+
+    // Prevent backspacing - only allow adding characters
+    if (cleanValue.length < currentInput.length) {
+      return;
+    }
+
     setCurrentInput(cleanValue);
 
     // Clear error message when user starts typing a new word
@@ -495,17 +501,17 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
       {renderSuggestions()}
       {currentGame.attempts === 2 && currentGame.canPlay && !showWrong && (
         <div
-          className="brutal-card text-center"
+          className="brutal-card text-center last-chance-box"
           style={{ background: "var(--bg-error)" }}
         >
           <div
-            className="brutal-text-xl mb-4"
+            className="brutal-text-xl"
             style={{ color: "var(--text-inverse)" }}
           >
             Last Chance!
           </div>
           {timeRemaining !== null && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div
                 className="brutal-text-md"
                 style={{ color: "var(--text-inverse)" }}
@@ -513,7 +519,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
                 Time remaining: {Math.ceil(timeRemaining / 1000)}s
               </div>
               <div
-                className="brutal-container h-4"
+                className="brutal-container h-3"
                 style={{ background: "var(--bg-secondary)" }}
               >
                 <div

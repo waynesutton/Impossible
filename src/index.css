@@ -39,7 +39,7 @@
   --bg-surface: #f3f4f6;
   --bg-warning: #fef3c7;
   --bg-success: #d1fae5;
-  --bg-error: #fee2e2;
+  --bg-error: #111827;
 
   --text-primary: #111827;
   --text-secondary: #6b7280;
@@ -300,6 +300,9 @@ body {
   box-shadow: var(--shadow-brutal);
   padding: 1.5rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .brutal-text-xl {
@@ -325,6 +328,72 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+/* Mobile responsive text sizing */
+@media (max-width: 640px) {
+  .brutal-text-xl {
+    font-size: 1.5rem;
+  }
+
+  .brutal-text-lg {
+    font-size: 1.25rem;
+  }
+
+  .brutal-text-md {
+    font-size: 0.875rem;
+  }
+}
+
+/* Stats card labels - smaller text for better fit */
+.brutal-stats-card .brutal-text-md {
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+/* Mobile stats cards */
+@media (max-width: 640px) {
+  .brutal-stats-card {
+    padding: 0.75rem;
+  }
+
+  .brutal-stats-card .brutal-text-lg {
+    font-size: 1.125rem;
+  }
+
+  .brutal-stats-card .brutal-text-md {
+    font-size: 0.625rem;
+    line-height: 1.2;
+  }
+}
+
+/* Last chance box styling */
+.last-chance-box {
+  padding: 1rem;
+}
+
+.last-chance-box .brutal-text-xl {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.last-chance-box .brutal-text-md {
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .last-chance-box {
+    padding: 0.75rem;
+  }
+
+  .last-chance-box .brutal-text-xl {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .last-chance-box .brutal-text-md {
+    font-size: 0.75rem;
+  }
 }
 
 /* Theme Switcher */

@@ -344,7 +344,6 @@ export function Leaderboard({
                         className="brutal-leaderboard-item flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="brutal-badge">•</span>
                           <div>
                             <span
                               className="brutal-text-md"
@@ -359,8 +358,8 @@ export function Leaderboard({
                               className="text-sm"
                               style={{ color: "var(--text-secondary)" }}
                             >
-                              conquered "
-                              <span className="brutal-badge">{game.word}</span>"
+                              conquered{" "}
+                              <span className="brutal-badge">{game.word}</span>
                             </div>
                           </div>
                         </div>

@@ -320,15 +320,15 @@ export default function App() {
       <footer className="brutal-header py-4">
         <div className="text-center">
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Cooked by{" "}
+            Powered by{" "}
             <a
-              href="https://chef.convex.dev"
+              href="https://www.convex.dev/?utm_source=impossibleword"
               target="_blank"
               rel="noopener noreferrer"
               className="brutal-text-md hover:underline"
               style={{ color: "var(--text-primary)" }}
             >
-              Chef by Convex
+              Convex
             </a>
           </p>
         </div>
