@@ -228,7 +228,7 @@ export function HelperGame({ inviteId }: HelperGameProps) {
           <div className="text-xl font-bold text-red-600">Game Over</div>
           <p className="text-gray-600">
             {helperState.mainUserCompleted
-              ? "Your friend solved the word!"
+              ? "Your friend game is over!"
               : "Your friend used all 3 attempts."}
           </p>
           <p className="text-sm text-gray-500">

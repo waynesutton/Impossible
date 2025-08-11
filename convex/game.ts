@@ -14,7 +14,7 @@ async function getLoggedInUser(ctx: any) {
   let user = await ctx.db.query("users").first();
   if (!user) {
     const userId = await ctx.db.insert("users", {
-      name: "Demo Player",
+      name: "Player",
       email: "demo@example.com",
       isAnonymous: false,
     });
@@ -200,9 +200,7 @@ export const submitGuess = mutation({
     if (gameCompleted) {
       const user = await ctx.db.get(userId);
       const playerName =
-        user && "name" in user
-          ? user.name || user.email || "Demo Player"
-          : "Demo Player";
+        user && "name" in user ? user.name || user.email || "Player" : "Player";
       const isAnonymous =
         user && "isAnonymous" in user ? user.isAnonymous || false : false;
 

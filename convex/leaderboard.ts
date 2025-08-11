@@ -7,7 +7,7 @@ async function getLoggedInUser(ctx: any) {
   let user = await ctx.db.query("users").first();
   if (!user) {
     const userId = await ctx.db.insert("users", {
-      name: "Demo Player",
+      name: "Player",
       email: "demo@example.com",
       isAnonymous: false,
     });

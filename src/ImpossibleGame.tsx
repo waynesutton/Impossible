@@ -83,7 +83,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     ) {
       const interval = setInterval(() => {
         const elapsed = Date.now() - currentGame.thirdAttemptStartTime!;
-        const remaining = Math.max(0, 120000 - elapsed); // 2 minutes
+        const remaining = Math.max(0, 60000 - elapsed); // 60 seconds
         setTimeRemaining(remaining);
 
         if (remaining === 0) {
@@ -417,7 +417,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
                 <div className="w-full bg-red-200 rounded-full h-2">
                   <div
                     className="bg-red-600 h-2 rounded-full transition-all duration-100"
-                    style={{ width: `${(timeRemaining / 120000) * 100}%` }}
+                    style={{ width: `${(timeRemaining / 60000) * 100}%` }}
                   ></div>
                 </div>
               </div>
