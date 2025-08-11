@@ -26,6 +26,7 @@ export function ImpossibleGame() {
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Update current input when game state changes
@@ -96,13 +97,32 @@ export function ImpossibleGame() {
 
   // Show name entry when game completes (win or loss)
   useEffect(() => {
+    console.log("Game completion useEffect triggered", {
+      completed: currentGame?.completed,
+      showNameEntry,
+      attempts: currentGame?.attempts,
+      won: currentGame?.won,
+      canPlay: currentGame?.canPlay,
+    });
+
     if (currentGame?.completed && !showNameEntry) {
+      console.log("✅ Game completed, showing name entry", {
+        completed: currentGame.completed,
+        won: currentGame.won,
+        attempts: currentGame.attempts,
+      });
       setShowNameEntry(true);
+      setErrorMessage(null); // Clear any error messages when game completes
+      setCurrentInput(""); // Clear input when game completes
     }
   }, [currentGame?.completed, showNameEntry]);
 
   const handleInputChange = async (value: string) => {
-    if (!currentGame || !currentGame.canPlay) return;
+    if (!currentGame) return;
+
+    // Allow input even if game is completed (for viewing purposes)
+    // but prevent submission logic for completed games
+    if (currentGame.completed) return;
 
     // Only allow letters and limit to word length
     const cleanValue = value
@@ -110,6 +130,11 @@ export function ImpossibleGame() {
       .replace(/[^a-z]/g, "")
       .slice(0, currentGame.word.length);
     setCurrentInput(cleanValue);
+
+    // Clear error message when user starts typing a new word
+    if (cleanValue.length === 1) {
+      setErrorMessage(null);
+    }
 
     // Persist current guess for realtime sync
     await updateGuess({ guess: cleanValue });
@@ -119,17 +144,36 @@ export function ImpossibleGame() {
     if (cleanValue.length === targetWord.length) {
       try {
         setIsSubmitting(true);
+        setErrorMessage(null);
         const result = await submitGuess({ guess: cleanValue });
+        console.log("📤 Submit guess result:", result);
+
         if (result.correct) {
           confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-          toast.success("Incredible! You solved the impossible! 🎉");
         } else {
-          toast.error("Not it. Try another word!");
-          setCurrentInput("");
-          await updateGuess({ guess: "" });
+          // Check if this was the final attempt (attemptsRemaining will be 0)
+          if (result.attemptsRemaining === 0) {
+            console.log("🎯 Final attempt - game should complete now");
+            // Game is over - don't show "try another word", let the completion flow handle it
+            setCurrentInput("");
+            await updateGuess({ guess: "" });
+
+            // Force show name entry since this is the final attempt
+            // In case the useEffect doesn't trigger immediately due to Convex query delay
+            setTimeout(() => {
+              console.log("🔄 Forcing name entry after 500ms delay");
+              setShowNameEntry(true);
+              setErrorMessage(null);
+            }, 500);
+          } else {
+            console.log(`❌ Wrong attempt ${3 - result.attemptsRemaining}/3`);
+            setErrorMessage("Not it. Try another word!");
+            setCurrentInput("");
+            await updateGuess({ guess: "" });
+          }
         }
-      } catch (_error) {
-        toast.error("Failed to submit guess");
+      } catch (error: any) {
+        setErrorMessage(error.message || "Failed to submit guess");
       } finally {
         setIsSubmitting(false);
       }
@@ -139,10 +183,10 @@ export function ImpossibleGame() {
   const handleGetHint = async () => {
     try {
       setIsGettingHint(true);
+      setErrorMessage(null);
       await requestHint();
-      toast.success("Hint requested! Check back in a moment.");
-    } catch (_error) {
-      toast.error("Hints only available after 2 attempts");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Hints only available after 2 attempts");
     } finally {
       setIsGettingHint(false);
     }
@@ -151,12 +195,12 @@ export function ImpossibleGame() {
   const handleCreateInvite = async () => {
     try {
       setIsCreatingInvite(true);
+      setErrorMessage(null);
       const inviteId = await createInviteLink();
       const link = `${window.location.origin}?invite=${inviteId}`;
       setInviteLink(link);
-      toast.success("Invite link created!");
-    } catch (_error) {
-      toast.error("Failed to create invite link");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to create invite link");
     } finally {
       setIsCreatingInvite(false);
     }
@@ -168,7 +212,6 @@ export function ImpossibleGame() {
     try {
       await navigator.clipboard.writeText(inviteLink);
       setShowCopySuccess(true);
-      toast.success("Link copied to clipboard!");
       setTimeout(() => setShowCopySuccess(false), 2000);
     } catch (_error) {
       const textArea = document.createElement("textarea");
@@ -178,7 +221,6 @@ export function ImpossibleGame() {
       document.execCommand("copy");
       document.body.removeChild(textArea);
       setShowCopySuccess(true);
-      toast.success("Link copied to clipboard!");
       setTimeout(() => setShowCopySuccess(false), 2000);
     }
   };
@@ -189,9 +231,8 @@ export function ImpossibleGame() {
         suggestionId: suggestionId as any,
       });
       await handleInputChange(suggestion);
-      toast.info("Using friend's suggestion!");
-    } catch (_error) {
-      toast.error("Failed to use suggestion");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to use suggestion");
     }
   };
 
@@ -199,7 +240,6 @@ export function ImpossibleGame() {
     e.preventDefault();
     if (displayName.trim()) {
       await updateDisplayName({ displayName: displayName.trim() });
-      toast.success("Name saved!");
     }
     setShowNameEntry(false);
   };
@@ -207,10 +247,10 @@ export function ImpossibleGame() {
   const handleSkipNameEntry = async () => {
     await updateDisplayName({ displayName: "Anonymous" });
     setShowNameEntry(false);
-    toast.info("Added as anonymous player!");
   };
 
   const handleStartNewGame = async () => {
+    console.log("Starting new game...");
     // Reset component state
     setCurrentInput("");
     setInviteLink(null);
@@ -222,9 +262,9 @@ export function ImpossibleGame() {
     setIsCreatingInvite(false);
     setTimeRemaining(null);
     setShowCopySuccess(false);
+    setErrorMessage(null);
 
     await startNewGame();
-    toast.info("Starting new game with a fresh word!");
   };
 
   if (!currentGame) {
@@ -292,6 +332,15 @@ export function ImpossibleGame() {
             </span>
           ))}
         </div>
+        {/* Error messages appear here instead of toasts */}
+        {errorMessage && (
+          <div className="mt-3 px-4 py-2 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+            {errorMessage}
+          </div>
+        )}
+        {isSubmitting && (
+          <div className="mt-3 text-sm text-blue-600">Submitting guess...</div>
+        )}
       </div>
     );
   };
@@ -338,42 +387,14 @@ export function ImpossibleGame() {
             🎉 Congratulations!
           </div>
           <p className="text-gray-600">You guessed the impossible word!</p>
-          {showNameEntry && (
-            <div className="space-y-3 mt-4">
-              <p className="text-sm text-gray-600">Add your name (optional):</p>
-              <form onSubmit={handleNameSubmit} className="space-y-3">
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none"
-                  maxLength={20}
-                />
-                <div className="flex gap-2 justify-center">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSkipNameEntry}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Skip
-                  </button>
-                </div>
-              </form>
-            </div>
+          {!showNameEntry && (
+            <button
+              onClick={handleStartNewGame}
+              className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Start New Game
+            </button>
           )}
-          <button
-            onClick={handleStartNewGame}
-            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            Start New Game
-          </button>
         </div>
       );
     }
@@ -387,42 +408,14 @@ export function ImpossibleGame() {
             The word was:{" "}
             <span className="font-bold uppercase">{currentGame.word}</span>
           </p>
-          {showNameEntry && (
-            <div className="space-y-3 mt-4">
-              <p className="text-sm text-gray-600">Add your name (optional):</p>
-              <form onSubmit={handleNameSubmit} className="space-y-3">
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none"
-                  maxLength={20}
-                />
-                <div className="flex gap-2 justify-center">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSkipNameEntry}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  >
-                    Skip
-                  </button>
-                </div>
-              </form>
-            </div>
+          {!showNameEntry && (
+            <button
+              onClick={handleStartNewGame}
+              className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Start New Game
+            </button>
           )}
-          <button
-            onClick={handleStartNewGame}
-            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-          >
-            Start New Game
-          </button>
         </div>
       );
     }
@@ -442,6 +435,40 @@ export function ImpossibleGame() {
 
   return (
     <div className="space-y-8">
+      {/* Name entry at top when game completes */}
+      {showNameEntry && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-gray-600 mb-3">
+            Add your name to the leaderboard (optional):
+          </p>
+          <form onSubmit={handleNameSubmit} className="space-y-3">
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Enter your name"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-800 focus:outline-none"
+              maxLength={20}
+            />
+            <div className="flex gap-2 justify-center">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={handleSkipNameEntry}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Skip
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {renderLetterHints()}
       {currentGame.hint === "Generating hint..." && (
         <div className="text-center">

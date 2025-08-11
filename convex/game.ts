@@ -54,8 +54,23 @@ export const getCurrentGame = query({
     // First try to find an active (not completed) game
     let userAttempt = userAttempts.find((attempt) => !attempt.completed);
 
+    // If no active game, check if there's a recently completed game (within last 5 minutes)
+    // This allows the completion flow to work before auto-starting a new game
+    if (!userAttempt && userAttempts.length > 0) {
+      const recentGame = userAttempts[0]; // Most recent game
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+
+      if (
+        recentGame.completed &&
+        recentGame.completedAt &&
+        recentGame.completedAt > fiveMinutesAgo
+      ) {
+        userAttempt = recentGame; // Show completed game for name entry flow
+      }
+    }
+
     if (!userAttempt) {
-      return null; // No active game at all
+      return null; // No active or recent game
     }
 
     // Get the game word
@@ -159,8 +174,14 @@ export const submitGuess = mutation({
 
     const currentAttempts = userAttempt.attempts || 0;
 
-    if (userAttempt.completed || currentAttempts >= 3) {
-      throw new Error("Game already completed or max attempts reached");
+    // Don't allow submission if already completed
+    if (userAttempt.completed) {
+      throw new Error("Game already completed");
+    }
+
+    // Don't allow submission if max attempts reached (before processing this attempt)
+    if (currentAttempts >= 3) {
+      throw new Error("Maximum attempts reached");
     }
 
     const isCorrect = args.guess.toLowerCase() === gameWord.word.toLowerCase();
@@ -170,7 +191,7 @@ export const submitGuess = mutation({
     await ctx.db.patch(userAttempt._id, {
       attempts: newAttempts,
       completed: gameCompleted, // Mark as completed whether won or lost after 3 attempts
-      currentGuess: isCorrect ? args.guess : "",
+      currentGuess: isCorrect ? args.guess : userAttempt.currentGuess, // Keep current guess if wrong, use new guess if correct
       lastAttemptTime: Date.now(),
       completedAt: gameCompleted ? Date.now() : undefined,
     });
@@ -189,7 +210,7 @@ export const submitGuess = mutation({
         userId,
         gameId: userAttempt.gameId,
         word: gameWord.word,
-        completed: isCorrect,
+        completed: isCorrect, // true if they guessed correctly, false if they failed
         attempts: newAttempts,
         completedAt: Date.now(),
         displayName: userAttempt.displayName,
