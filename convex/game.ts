@@ -399,8 +399,10 @@ export const getInviteInfo = query({
     const creator = await ctx.db.get(invite.createdBy);
     const creatorName =
       creator && "name" in creator
-        ? creator.name || creator.email || "Anonymous"
-        : "Anonymous";
+        ? creator.name === "Demo Player"
+          ? "Player"
+          : creator.name || creator.email || "Player"
+        : "Player";
 
     return {
       creatorName,
