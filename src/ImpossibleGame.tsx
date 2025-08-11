@@ -88,7 +88,8 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
 
         if (remaining === 0) {
           clearInterval(interval);
-          submitGuess({ guess: "" });
+          // Handle timeout as final attempt
+          handleTimeoutSubmission();
         }
       }, 100);
 
@@ -104,6 +105,29 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
   ]);
 
   // No longer need game completion useEffect since we redirect to leaderboard
+
+  const handleTimeoutSubmission = async () => {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      const result = await submitGuess({ guess: "" });
+      console.log("⏰ Timeout submission result:", result);
+
+      // Since this is the third attempt timing out, the game should be over
+      if (result.attemptsRemaining === 0) {
+        console.log("⏰ Timeout - game over, redirecting to leaderboard");
+        onGameComplete?.({
+          won: false,
+          word: currentGame?.word || "",
+          attempts: 3,
+        });
+      }
+    } catch (error: any) {
+      setErrorMessage(error.message || "Failed to submit timeout");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleInputChange = async (value: string) => {
     if (!currentGame) return;
