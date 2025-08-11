@@ -1,9 +1,11 @@
 import { Toaster } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Leaderboard } from "./Leaderboard";
 import { ImpossibleGame } from "./ImpossibleGame";
+import { HelperGame } from "./HelperGame";
+import { Id } from "../convex/_generated/dataModel";
 
 interface GameCompletionData {
   won: boolean;
@@ -13,11 +15,22 @@ interface GameCompletionData {
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<
-    "game" | "leaderboard" | "playing"
+    "game" | "leaderboard" | "playing" | "helper"
   >("game");
   const [gameCompletionData, setGameCompletionData] =
     useState<GameCompletionData | null>(null);
+  const [inviteId, setInviteId] = useState<Id<"invites"> | null>(null);
   const startNewGame = useMutation(api.game.startNewGame);
+
+  // Check for invite parameter on load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invite = params.get("invite");
+    if (invite) {
+      setInviteId(invite as Id<"invites">);
+      setCurrentPage("helper");
+    }
+  }, []);
 
   const handleBeginGame = async () => {
     try {
@@ -126,6 +139,8 @@ export default function App() {
             </div>
           ) : currentPage === "playing" ? (
             <ImpossibleGame onGameComplete={handleGameComplete} />
+          ) : currentPage === "helper" && inviteId ? (
+            <HelperGame inviteId={inviteId} />
           ) : (
             <Leaderboard
               gameCompletionData={gameCompletionData}

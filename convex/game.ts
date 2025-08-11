@@ -704,3 +704,60 @@ export const getHelperGameWord = query({
     };
   },
 });
+
+export const getMainPlayerGameState = query({
+  args: {
+    inviteId: v.id("invites"),
+  },
+  handler: async (ctx, args) => {
+    const invite = await ctx.db.get(args.inviteId);
+    if (!invite) {
+      return null;
+    }
+
+    if (!invite.gameId) {
+      return null;
+    }
+
+    // Get main player's current attempt
+    const mainUserAttempt = await ctx.db
+      .query("userAttempts")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("userId"), invite.createdBy),
+          q.eq(q.field("gameId"), invite.gameId!),
+        ),
+      )
+      .first();
+
+    if (!mainUserAttempt) {
+      return null;
+    }
+
+    // Get the game word
+    const gameWord = await ctx.db
+      .query("gameWords")
+      .withIndex("by_game_id", (q) => q.eq("gameId", invite.gameId!))
+      .unique();
+
+    if (!gameWord) {
+      return null;
+    }
+
+    return {
+      gameId: mainUserAttempt.gameId,
+      word: gameWord.word,
+      length: gameWord.word.length,
+      letters: gameWord.word.split(""),
+      shuffledLetters: gameWord.shuffledLetters || gameWord.word.split(""),
+      attempts: mainUserAttempt.attempts,
+      completed: mainUserAttempt.completed,
+      currentGuess: mainUserAttempt.currentGuess,
+      canPlay: !mainUserAttempt.completed && mainUserAttempt.attempts < 3,
+      won:
+        mainUserAttempt.completed &&
+        mainUserAttempt.currentGuess.toLowerCase() ===
+          gameWord.word.toLowerCase(),
+    };
+  },
+});
