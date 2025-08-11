@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 
@@ -24,6 +24,54 @@ export function Leaderboard({
 
   const [showNameEntry, setShowNameEntry] = useState(!!gameCompletionData);
   const [displayName, setDisplayName] = useState("");
+
+  // Pagination state for recent plays
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [allRecentPlays, setAllRecentPlays] = useState<any[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreData, setHasMoreData] = useState(true);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(
+    undefined,
+  );
+
+  // Load initial recent plays (10)
+  const recentPlaysData = useQuery(api.leaderboard.getRecentPlays, {
+    cursor: undefined,
+    limit: 10,
+  });
+
+  // Query for loading more data with cursor
+  const moreRecentPlaysData = useQuery(
+    api.leaderboard.getRecentPlays,
+    currentCursor ? { cursor: currentCursor, limit: 10 } : "skip",
+  );
+
+  // Initialize allRecentPlays with first batch using useEffect
+  useEffect(() => {
+    if (recentPlaysData && allRecentPlays.length === 0) {
+      setAllRecentPlays(recentPlaysData.games);
+      setNextCursor(recentPlaysData.nextCursor);
+      setHasMoreData(recentPlaysData.hasMore);
+    }
+  }, [recentPlaysData]);
+
+  // Handle loading more data when new data comes in using useEffect
+  useEffect(() => {
+    if (moreRecentPlaysData && loadingMore) {
+      setAllRecentPlays((prev) => [...prev, ...moreRecentPlaysData.games]);
+      setNextCursor(moreRecentPlaysData.nextCursor);
+      setHasMoreData(moreRecentPlaysData.hasMore);
+      setLoadingMore(false);
+      setCurrentCursor(undefined); // Reset current cursor
+    }
+  }, [moreRecentPlaysData, loadingMore]);
+
+  // Load more recent plays function
+  const loadMoreRecentPlays = () => {
+    if (!hasMoreData || loadingMore || !nextCursor) return;
+    setLoadingMore(true);
+    setCurrentCursor(nextCursor); // This will trigger the query
+  };
 
   const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -388,8 +436,14 @@ export function Leaderboard({
           >
             Recent Plays
           </h2>
+          <p
+            className="text-sm mt-2"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Latest games from all styles (Neobrutalism, Original, Dark)
+          </p>
         </div>
-        {leaderboard.recentPlays.length === 0 ? (
+        {allRecentPlays.length === 0 ? (
           <div
             className="brutal-card text-center"
             style={{ color: "var(--text-secondary)" }}
@@ -398,7 +452,7 @@ export function Leaderboard({
           </div>
         ) : (
           <div className="space-y-3">
-            {leaderboard.recentPlays.map((game: any) => (
+            {allRecentPlays.map((game: any) => (
               <div
                 key={game._id}
                 className="brutal-leaderboard-item flex items-center justify-between"
@@ -425,6 +479,26 @@ export function Leaderboard({
                 </div>
               </div>
             ))}
+
+            {/* Load More Button */}
+            {hasMoreData && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={loadMoreRecentPlays}
+                  disabled={loadingMore}
+                  className="brutal-button secondary px-6 py-3"
+                >
+                  {loadingMore ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-800"></div>
+                      Loading...
+                    </div>
+                  ) : (
+                    "Load More"
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

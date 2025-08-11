@@ -26,11 +26,11 @@ export const getLeaderboard = query({
       .order("desc")
       .take(50);
 
-    // Recent plays (any games), newest first
+    // Recent plays (any games), newest first - only get 10 for initial load
     const recentPlays = await ctx.db
       .query("gameResults")
       .order("desc")
-      .take(50);
+      .take(10);
 
     // Global totals
     const totalGames = (
@@ -46,6 +46,64 @@ export const getLeaderboard = query({
         totalGames > 0
           ? Math.round((completedGames.length / totalGames) * 100)
           : 0,
+    };
+  },
+});
+
+// New paginated query for recent plays
+export const getRecentPlays = query({
+  args: {
+    cursor: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    games: v.array(
+      v.object({
+        _id: v.id("gameResults"),
+        _creationTime: v.number(),
+        userId: v.id("users"),
+        gameId: v.string(),
+        word: v.string(),
+        completed: v.boolean(),
+        attempts: v.number(),
+        completedAt: v.number(),
+        displayName: v.optional(v.string()),
+        playerName: v.optional(v.string()),
+        isAnonymous: v.boolean(),
+      }),
+    ),
+    hasMore: v.boolean(),
+    nextCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const limit = args.limit || 10;
+
+    // Get games in descending order (newest first)
+    let query = ctx.db.query("gameResults").order("desc");
+
+    // If cursor is provided, start from that point
+    if (args.cursor) {
+      // Parse cursor to get the completedAt timestamp
+      const cursorTime = parseInt(args.cursor);
+      query = query.filter((q) => q.lt(q.field("completedAt"), cursorTime));
+    }
+
+    // Get one extra to check if there are more
+    const games = await query.take(limit + 1);
+
+    const hasMore = games.length > limit;
+    const returnGames = hasMore ? games.slice(0, limit) : games;
+
+    // Next cursor is the completedAt of the last game
+    const nextCursor =
+      hasMore && returnGames.length > 0
+        ? returnGames[returnGames.length - 1].completedAt.toString()
+        : undefined;
+
+    return {
+      games: returnGames,
+      hasMore,
+      nextCursor,
     };
   },
 });
