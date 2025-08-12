@@ -252,7 +252,7 @@ export function Leaderboard({
               className="brutal-text-lg"
               style={{ color: "var(--text-primary)" }}
             >
-              Your Stats
+              Total Stats
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="brutal-stats-card">
@@ -440,7 +440,7 @@ export function Leaderboard({
             className="text-sm mt-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Latest games from all styles (Neobrutalism, Original, Dark)
+            Latest games played.
           </p>
         </div>
         {allRecentPlays.length === 0 ? (

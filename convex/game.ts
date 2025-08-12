@@ -200,7 +200,11 @@ export const submitGuess = mutation({
     if (gameCompleted) {
       const user = await ctx.db.get(userId);
       const playerName =
-        user && "name" in user ? user.name || user.email || "Player" : "Player";
+        user && "name" in user
+          ? (user.name === "Demo Player" ? "Player" : user.name) ||
+            user.email ||
+            "Player"
+          : "Player";
       const isAnonymous =
         user && "isAnonymous" in user ? user.isAnonymous || false : false;
 
