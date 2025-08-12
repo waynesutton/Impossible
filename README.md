@@ -29,9 +29,9 @@ The app features a comprehensive theme system with three modes:
 
 Users can switch between themes using the icon buttons in the top-right navigation:
 
-- 🎨 Neobrutalism (Bold & Colorful)
-- 📝 Original (Clean & Minimal)
-- 🌙 Dark (Dark Mode)
+- Palette icon: Neobrutalism (Bold & Colorful)
+- File icon: Original (Clean & Minimal)
+- Moon icon: Dark (Dark Mode)
 
 Theme preferences are automatically saved to localStorage and persist across sessions.
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Palette, FileText, Moon } from "lucide-react";
 
 type Theme = "neobrutalism" | "original" | "dark";
 
@@ -44,9 +45,9 @@ export function ThemeSwitcher() {
   };
 
   const themes = [
-    { id: "neobrutalism", icon: "🎨", label: "Brutal" },
-    { id: "original", icon: "📝", label: "Clean" },
-    { id: "dark", icon: "🌙", label: "Dark" },
+    { id: "neobrutalism", icon: Palette, label: "Brutal" },
+    { id: "original", icon: FileText, label: "Clean" },
+    { id: "dark", icon: Moon, label: "Dark" },
   ] as const;
 
   return (
@@ -59,7 +60,7 @@ export function ThemeSwitcher() {
           title={`Switch to ${theme.label} theme`}
           aria-label={`Switch to ${theme.label} theme`}
         >
-          {theme.icon}
+          <theme.icon size={20} />
         </button>
       ))}
     </div>

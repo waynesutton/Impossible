@@ -15,6 +15,7 @@
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "convex": "^1.25.4",
+    "lucide-react": "^0.539.0",
     "openai": "^5.12.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
