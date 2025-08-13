@@ -6,6 +6,7 @@ interface GameCompletionData {
   won: boolean;
   word: string;
   attempts: number;
+  usedSecretWord?: boolean;
 }
 
 interface LeaderboardProps {
@@ -116,24 +117,56 @@ export function Leaderboard({
         <div className="brutal-card text-center">
           {gameCompletionData.won ? (
             <div className="space-y-4">
-              <div
-                className="brutal-text-xl"
-                style={{ color: "var(--bg-success)" }}
-              >
-                🎉 Congratulations!
-              </div>
-              <p
-                className="brutal-text-md"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                You guessed the impossible word!
-              </p>
-              <div className="brutal-badge text-lg">
-                {gameCompletionData.word}
-              </div>
-              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-                Solved in {gameCompletionData.attempts} attempts
-              </p>
+              {gameCompletionData.usedSecretWord ? (
+                <>
+                  <div
+                    className="brutal-text-xl"
+                    style={{ color: "var(--bg-error)" }}
+                  >
+                    You Cheated!
+                  </div>
+                  <p
+                    className="brutal-text-md"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    You cheated playing the impossible word!
+                  </p>
+                  <div className="brutal-badge text-lg">
+                    {gameCompletionData.word}
+                  </div>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Used secret shortcut in {gameCompletionData.attempts}{" "}
+                    attempts
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="brutal-text-xl"
+                    style={{ color: "var(--bg-success)" }}
+                  >
+                    🎉 Congratulations!
+                  </div>
+                  <p
+                    className="brutal-text-md"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    You guessed the impossible word!
+                  </p>
+                  <div className="brutal-badge text-lg">
+                    {gameCompletionData.word}
+                  </div>
+                  <p
+                    className="text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Solved in {gameCompletionData.attempts} attempts
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-4">

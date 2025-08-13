@@ -12,6 +12,7 @@ interface GameCompletionData {
   won: boolean;
   word: string;
   attempts: number;
+  usedSecretWord?: boolean;
 }
 
 export default function App() {

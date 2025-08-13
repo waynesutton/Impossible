@@ -9,6 +9,7 @@ interface ImpossibleGameProps {
     won: boolean;
     word: string;
     attempts: number;
+    usedSecretWord?: boolean;
   }) => void;
 }
 
@@ -122,6 +123,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
           won: false,
           word: currentGame?.word || "",
           attempts: 3,
+          usedSecretWord: false,
         });
       }
     } catch (error: any) {
@@ -173,11 +175,13 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
         if (result.correct) {
           confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
           // If correct, redirect to leaderboard after a brief celebration
+          const usedSecretWord = cleanValue.toLowerCase() === "vex";
           setTimeout(() => {
             onGameComplete?.({
               won: true,
-              word: cleanValue,
+              word: usedSecretWord ? currentGame.word : cleanValue,
               attempts: currentGame.attempts + 1,
+              usedSecretWord: usedSecretWord,
             });
           }, 2000);
         } else {
@@ -191,6 +195,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
               won: false,
               word: currentGame.word,
               attempts: 3,
+              usedSecretWord: false,
             });
           } else {
             console.log(`❌ Wrong attempt ${3 - result.attemptsRemaining}/3`);
