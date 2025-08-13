@@ -19,6 +19,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
   const submitGuess = useMutation(api.game.submitGuess);
   const startNewGame = useMutation(api.game.startNewGame);
   const requestHint = useMutation(api.game.requestHint);
+  const requestClue = useMutation(api.game.requestClue);
   const updateDisplayName = useMutation(api.game.updateDisplayName);
   const createInviteLink = useMutation(api.game.createInviteLink);
   const useSuggestion = useMutation(api.game.useSuggestion);
@@ -28,6 +29,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
   const [showWrong, setShowWrong] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGettingHint, setIsGettingHint] = useState(false);
+  const [isGettingClue, setIsGettingClue] = useState(false);
   const [showNameEntry, setShowNameEntry] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -136,11 +138,13 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     // but prevent submission logic for completed games
     if (currentGame.completed) return;
 
-    // Only allow letters and limit to word length
-    const cleanValue = value
-      .toLowerCase()
-      .replace(/[^a-z]/g, "")
-      .slice(0, currentGame.word.length);
+    // Only allow letters and limit to word length (except for secret word "vex")
+    let cleanValue = value.toLowerCase().replace(/[^a-z]/g, "");
+
+    // If it's not the secret word, limit to word length
+    if (cleanValue !== "vex") {
+      cleanValue = cleanValue.slice(0, currentGame.word.length);
+    }
 
     // Prevent backspacing - only allow adding characters
     if (cleanValue.length < currentInput.length) {
@@ -157,9 +161,9 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     // Persist current guess for realtime sync
     await updateGuess({ guess: cleanValue });
 
-    // Only submit when they've typed a complete word
+    // Only submit when they've typed a complete word or the secret word
     const targetWord = currentGame.word.toLowerCase();
-    if (cleanValue.length === targetWord.length) {
+    if (cleanValue.length === targetWord.length || cleanValue === "vex") {
       try {
         setIsSubmitting(true);
         setErrorMessage(null);
@@ -209,9 +213,21 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
       setErrorMessage(null);
       await requestHint();
     } catch (error: any) {
-      setErrorMessage(error.message || "Hints only available after 2 attempts");
+      setErrorMessage(error.message || "Hints only available after 1 attempt");
     } finally {
       setIsGettingHint(false);
+    }
+  };
+
+  const handleGetClue = async () => {
+    try {
+      setIsGettingClue(true);
+      setErrorMessage(null);
+      await requestClue();
+    } catch (error: any) {
+      setErrorMessage(error.message || "Clues only available after 2 attempts");
+    } finally {
+      setIsGettingClue(false);
     }
   };
 
@@ -282,6 +298,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     setShowWrong(false);
     setIsSubmitting(false);
     setIsGettingHint(false);
+    setIsGettingClue(false);
     setIsCreatingInvite(false);
     setTimeRemaining(null);
     setShowCopySuccess(false);
@@ -498,6 +515,25 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
           </div>
         </div>
       )}
+      {currentGame.clue && (
+        <div
+          className="brutal-card text-center"
+          style={{ background: "var(--bg-success)" }}
+        >
+          <div
+            className="brutal-text-md mb-2"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Clue:
+          </div>
+          <div
+            className="brutal-text-lg"
+            style={{ color: "var(--text-primary)", fontFamily: "monospace" }}
+          >
+            {currentGame.clue}
+          </div>
+        </div>
+      )}
       {renderSuggestions()}
       {currentGame.attempts === 2 && currentGame.canPlay && !showWrong && (
         <div
@@ -557,10 +593,15 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
               type="text"
               value={currentInput}
               onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && currentInput.toLowerCase() === "vex") {
+                  handleInputChange("vex");
+                }
+              }}
               disabled={isSubmitting || isGameOver}
               className="brutal-input w-full text-center text-xl disabled:opacity-50"
               placeholder="Type the word..."
-              maxLength={currentGame.word.length}
+              maxLength={Math.max(currentGame.word.length, 3)}
             />
           </div>
           {/* Invite Friend Button */}
@@ -600,8 +641,8 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
               </div>
             )}
           </div>
-          {currentGame.attempts >= 2 && (
-            <div className="text-center">
+          {currentGame.attempts >= 1 && (
+            <div className="text-center space-y-4">
               <button
                 onClick={handleGetHint}
                 disabled={
@@ -613,6 +654,19 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
                   ? "Getting hint..."
                   : "Ask for Help"}
               </button>
+              {currentGame.attempts >= 2 && (
+                <button
+                  onClick={handleGetClue}
+                  disabled={isGettingClue || isGameOver || !!currentGame.clue}
+                  className="brutal-button secondary px-6 py-3 disabled:opacity-50"
+                >
+                  {isGettingClue
+                    ? "Getting clue..."
+                    : currentGame.clue
+                      ? "Clue Used"
+                      : "Give me a clue"}
+                </button>
+              )}
             </div>
           )}
         </div>

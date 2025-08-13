@@ -427,6 +427,72 @@ export function Leaderboard({
         )}
       </div>
 
+      {/* Winners Hall of Shame */}
+      {leaderboard.shameGames && leaderboard.shameGames.length > 0 && (
+        <div className="space-y-6">
+          <div className="brutal-card text-center">
+            <h2
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Winners Hall of Shame
+            </h2>
+            <p
+              className="text-sm mt-2"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Players who used the secret shortcut
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {leaderboard.shameGames.map((game: any) => (
+              <div
+                key={game._id}
+                className="brutal-leaderboard-item flex items-center justify-between"
+                style={{ background: "var(--bg-error)" }}
+              >
+                <div className="flex items-center gap-3">
+                  <div>
+                    <span
+                      className="brutal-text-md"
+                      style={{ color: "var(--text-inverse)" }}
+                    >
+                      {game.displayName ||
+                        (game.isAnonymous
+                          ? "Anonymous"
+                          : game.playerName || "Player")}{" "}
+                      cheated
+                    </span>
+                    <div
+                      className="text-sm"
+                      style={{ color: "var(--text-inverse)", opacity: 0.8 }}
+                    >
+                      should have guessed{" "}
+                      <span
+                        className="brutal-badge"
+                        style={{
+                          background: "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {game.word}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className="text-xs"
+                  style={{ color: "var(--text-inverse)", opacity: 0.8 }}
+                >
+                  {formatTime(game.completedAt)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent Plays (all games) */}
       <div className="space-y-6">
         <div className="brutal-card text-center">

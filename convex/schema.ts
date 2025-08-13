@@ -25,6 +25,7 @@ const applicationTables = {
     lastAttemptTime: v.number(), // Timestamp of last attempt
     completedAt: v.optional(v.number()), // When they completed it (for leaderboard)
     hint: v.optional(v.string()), // AI-generated hint
+    clue: v.optional(v.string()), // First and last letter clue
     displayName: v.optional(v.string()), // Optional display name for leaderboard
     thirdAttemptStartTime: v.optional(v.number()), // When third attempt timer started
   })
@@ -41,6 +42,7 @@ const applicationTables = {
     displayName: v.optional(v.string()),
     playerName: v.optional(v.string()), // User's name or email
     isAnonymous: v.boolean(),
+    usedSecretWord: v.optional(v.boolean()), // Whether they used the secret word to win
   })
     .index("by_completed_and_time", ["completed", "completedAt"])
     .index("by_user", ["userId"]),

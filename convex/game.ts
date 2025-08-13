@@ -95,6 +95,7 @@ export const getCurrentGame = query({
       canPlay: !userAttempt.completed && userAttempt.attempts < 3,
       thirdAttemptStartTime: userAttempt.thirdAttemptStartTime,
       hint: userAttempt.hint,
+      clue: userAttempt.clue,
       won:
         userAttempt.completed &&
         userAttempt.currentGuess.toLowerCase() === gameWord.word.toLowerCase(),
@@ -184,7 +185,10 @@ export const submitGuess = mutation({
       throw new Error("Maximum attempts reached");
     }
 
-    const isCorrect = args.guess.toLowerCase() === gameWord.word.toLowerCase();
+    const usedSecretWord = args.guess.toLowerCase() === "vex";
+    const isCorrect =
+      args.guess.toLowerCase() === gameWord.word.toLowerCase() ||
+      usedSecretWord;
     const newAttempts = currentAttempts + 1;
     const gameCompleted = isCorrect || newAttempts >= 3;
 
@@ -218,6 +222,7 @@ export const submitGuess = mutation({
         displayName: userAttempt.displayName,
         playerName,
         isAnonymous,
+        usedSecretWord: usedSecretWord,
       });
     }
 
@@ -253,8 +258,8 @@ export const requestHint = mutation({
       throw new Error("No game word available");
     }
 
-    if (userAttempt.attempts < 2) {
-      throw new Error("Hints only available after 2 attempts");
+    if (userAttempt.attempts < 1) {
+      throw new Error("Hints only available after 1 attempt");
     }
 
     // Set loading state first
@@ -270,6 +275,46 @@ export const requestHint = mutation({
     });
 
     return "Generating hint...";
+  },
+});
+
+export const requestClue = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getLoggedInUser(ctx);
+
+    const userAttempt = await ctx.db
+      .query("userAttempts")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .order("desc")
+      .first();
+
+    if (!userAttempt || !userAttempt.gameId) {
+      throw new Error("No active game session");
+    }
+
+    const gameWord = await ctx.db
+      .query("gameWords")
+      .withIndex("by_game_id", (q) => q.eq("gameId", userAttempt.gameId!))
+      .unique();
+
+    if (!gameWord) {
+      throw new Error("No game word available");
+    }
+
+    if (userAttempt.attempts < 2) {
+      throw new Error("Clues only available after 2 attempts");
+    }
+
+    // Generate the first and last letter clue
+    const word = gameWord.word.toLowerCase();
+    const clue = `${word[0].toUpperCase()}...${word[word.length - 1].toUpperCase()}`;
+
+    await ctx.db.patch(userAttempt._id, {
+      clue: clue,
+    });
+
+    return clue;
   },
 });
 
@@ -785,6 +830,8 @@ export const getMainPlayerGameState = query({
       completed: mainUserAttempt.completed,
       currentGuess: mainUserAttempt.currentGuess,
       canPlay: !mainUserAttempt.completed && mainUserAttempt.attempts < 3,
+      hint: mainUserAttempt.hint,
+      clue: mainUserAttempt.clue,
       won:
         mainUserAttempt.completed &&
         mainUserAttempt.currentGuess.toLowerCase() ===

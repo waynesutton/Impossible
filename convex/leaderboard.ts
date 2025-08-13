@@ -20,11 +20,17 @@ export const getLeaderboard = query({
   args: {},
   handler: async (ctx) => {
     // Winners (completed = true)
-    const completedGames = await ctx.db
+    const allCompletedGames = await ctx.db
       .query("gameResults")
       .withIndex("by_completed_and_time", (q) => q.eq("completed", true))
       .order("desc")
       .take(50);
+
+    // Separate legitimate winners from secret word users
+    const completedGames = allCompletedGames.filter(
+      (game) => !game.usedSecretWord,
+    );
+    const shameGames = allCompletedGames.filter((game) => game.usedSecretWord);
 
     // Recent plays (any games), newest first - only get 10 for initial load
     const recentPlays = await ctx.db
@@ -39,6 +45,7 @@ export const getLeaderboard = query({
 
     return {
       completedGames,
+      shameGames,
       recentPlays,
       totalGames,
       totalCompleted: completedGames.length,
@@ -70,6 +77,7 @@ export const getRecentPlays = query({
         displayName: v.optional(v.string()),
         playerName: v.optional(v.string()),
         isAnonymous: v.boolean(),
+        usedSecretWord: v.optional(v.boolean()),
       }),
     ),
     hasMore: v.boolean(),
