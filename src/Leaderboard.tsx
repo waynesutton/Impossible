@@ -34,6 +34,7 @@ export function Leaderboard({
   const [currentCursor, setCurrentCursor] = useState<string | undefined>(
     undefined,
   );
+  const [showAllShameGames, setShowAllShameGames] = useState(false);
 
   // Load initial recent plays (10)
   const recentPlaysData = useQuery(api.leaderboard.getRecentPlays, {
@@ -252,29 +253,7 @@ export function Leaderboard({
         </p>
       </div>
 
-      {/* Global Stats */}
-      <div className="brutal-stats-card">
-        <div className="space-y-3">
-          <div
-            className="brutal-text-xl"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {leaderboard.totalCompleted}
-          </div>
-          <div
-            className="brutal-text-md"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Words Conquered
-          </div>
-          <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            {leaderboard.successRate}% success rate (
-            {leaderboard.totalCompleted}/{leaderboard.totalGames} games)
-          </div>
-        </div>
-      </div>
-
-      {/* User Stats */}
+      {/* User Stats and global stats */}
       {userStats && (
         <div
           className="brutal-card"
@@ -299,7 +278,7 @@ export function Leaderboard({
                   className="brutal-text-md"
                   style={{ color: "var(--text-secondary)" }}
                 >
-                  Completed
+                  Words Conquered
                 </div>
               </div>
               <div className="brutal-stats-card">
@@ -404,19 +383,6 @@ export function Leaderboard({
                     </div>
                   </div>
 
-                  {/* Words conquered in this attempt count */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                    {[
-                      ...new Set(
-                        gamesForAttempts.map((game: any) => game.word),
-                      ),
-                    ].map((word) => (
-                      <div key={word} className="brutal-card text-center p-3">
-                        <span className="brutal-text-md">{word}</span>
-                      </div>
-                    ))}
-                  </div>
-
                   {/* Players who conquered these words */}
                   <div className="space-y-3">
                     {gamesForAttempts.map((game: any) => (
@@ -479,7 +445,10 @@ export function Leaderboard({
           </div>
 
           <div className="space-y-3">
-            {leaderboard.shameGames.map((game: any) => (
+            {(showAllShameGames
+              ? leaderboard.shameGames
+              : leaderboard.shameGames.slice(0, 5)
+            ).map((game: any) => (
               <div
                 key={game._id}
                 className="brutal-leaderboard-item flex items-center justify-between"
@@ -523,6 +492,18 @@ export function Leaderboard({
               </div>
             ))}
           </div>
+
+          {/* Load more button for shame games */}
+          {leaderboard.shameGames.length > 5 && !showAllShameGames && (
+            <div className="text-center">
+              <button
+                onClick={() => setShowAllShameGames(true)}
+                className="brutal-button secondary"
+              >
+                Load More Cheaters ({leaderboard.shameGames.length - 5} more)
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -539,7 +520,7 @@ export function Leaderboard({
             className="text-sm mt-2"
             style={{ color: "var(--text-secondary)" }}
           >
-            Latest games played.
+            Last 10 games played.
           </p>
         </div>
         {allRecentPlays.length === 0 ? (
