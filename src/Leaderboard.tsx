@@ -35,6 +35,14 @@ export function Leaderboard({
     undefined,
   );
   const [showAllShameGames, setShowAllShameGames] = useState(false);
+  // State for managing Winners Hall of Fame pagination by attempt count
+  const [attemptDisplayCounts, setAttemptDisplayCounts] = useState<
+    Record<number, number>
+  >({
+    1: 3,
+    2: 3,
+    3: 3,
+  });
 
   // Load initial recent plays (10)
   const recentPlaysData = useQuery(api.leaderboard.getRecentPlays, {
@@ -73,6 +81,14 @@ export function Leaderboard({
     if (!hasMoreData || loadingMore || !nextCursor) return;
     setLoadingMore(true);
     setCurrentCursor(nextCursor); // This will trigger the query
+  };
+
+  // Load more games for a specific attempt count
+  const loadMoreAttemptGames = (attemptCount: number) => {
+    setAttemptDisplayCounts((prev) => ({
+      ...prev,
+      [attemptCount]: prev[attemptCount] + 3,
+    }));
   };
 
   const handleNameSubmit = async (e: React.FormEvent) => {
@@ -385,40 +401,60 @@ export function Leaderboard({
 
                   {/* Players who conquered these words */}
                   <div className="space-y-3">
-                    {gamesForAttempts.map((game: any) => (
-                      <div
-                        key={game._id}
-                        className="brutal-leaderboard-item flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <span
-                              className="brutal-text-md"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {game.displayName ||
-                                (game.isAnonymous
-                                  ? "Anonymous Player"
-                                  : game.playerName || "Player")}
-                            </span>
-                            <div
-                              className="text-sm"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              conquered{" "}
-                              <span className="brutal-badge">{game.word}</span>
+                    {gamesForAttempts
+                      .slice(0, attemptDisplayCounts[attemptCount])
+                      .map((game: any) => (
+                        <div
+                          key={game._id}
+                          className="brutal-leaderboard-item flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <span
+                                className="brutal-text-md"
+                                style={{ color: "var(--text-primary)" }}
+                              >
+                                {game.displayName ||
+                                  (game.isAnonymous
+                                    ? "Anonymous Player"
+                                    : game.playerName || "Player")}
+                              </span>
+                              <div
+                                className="text-sm"
+                                style={{ color: "var(--text-secondary)" }}
+                              >
+                                conquered{" "}
+                                <span className="brutal-badge">
+                                  {game.word}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <div
+                            className="text-xs"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {formatTime(game.completedAt)}
+                          </div>
                         </div>
-                        <div
-                          className="text-xs"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          {formatTime(game.completedAt)}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
+
+                  {/* Load more button for this attempt count */}
+                  {gamesForAttempts.length >
+                    attemptDisplayCounts[attemptCount] && (
+                    <div className="text-center">
+                      <button
+                        onClick={() => loadMoreAttemptGames(attemptCount)}
+                        className="brutal-button secondary"
+                      >
+                        Load More (
+                        {gamesForAttempts.length -
+                          attemptDisplayCounts[attemptCount]}{" "}
+                        more)
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
