@@ -2,18 +2,68 @@
 
 A Convex-powered real-time word game with Neobrutalism design. Each player gets a unique, hard, AI-generated word. You have 3 attempts to guess the full word. After two failed attempts, you can request a hint. Invite friends to suggest words to try.
 
-## How it works
+## How the App Works
 
-- Goal: Guess the impossible word
-- Attempts: You get 3 tries per game
-- Hints: Available after 2 failed attempts
-- Friends: Invite friends to suggest words
-- Fresh: New impossible word every game
+The Impossible Word game is a challenging word-guessing game that combines AI-generated content, real-time collaboration, and a unique user experience:
 
-Notes:
+### Game Flow
 
-- No per-letter resets. A full attempt is counted only when you submit a complete word.
-- The letters are not reshuffled mid-game; you always see the fixed word layout.
+1. **Word Generation**: Each game starts with AI generating an obscure, difficult word (5-8 letters)
+2. **Letter Shuffling**: The word's letters are shuffled once and displayed as hints
+3. **Guessing**: Players type to guess the word - attempts are counted when a complete word is submitted
+4. **AI Assistance**: After failed attempts, players can request AI-generated hints or letter clues
+5. **Friend Collaboration**: Players can invite friends to suggest words via shareable links
+6. **Completion**: Game ends when word is guessed correctly or 3 attempts are exhausted
+
+### Core Features
+
+- **Goal**: Guess the impossible word
+- **Attempts**: You get 3 tries per game
+- **Hints**: AI-generated hints available after 1 attempt
+- **Clues**: First/last letter reveals available after 2 attempts
+- **Friends**: Invite friends to suggest words via unique invite links
+- **Fresh**: New impossible word every game
+- **Secret Word**: There's a special secret word that always wins (not documented publicly)
+
+### Game Mechanics
+
+- No per-letter resets. A full attempt is counted only when you submit a complete word
+- The letters are not reshuffled mid-game; you always see the fixed word layout
+- Third attempt has a 60-second timer for added pressure
+- Real-time collaboration with friends through suggestions
+- Anonymous or named gameplay with leaderboard tracking
+
+## Project Structure
+
+```
+impossible/
+├── src/                          # Frontend React application
+│   ├── App.tsx                   # Main app shell with navigation and page routing
+│   ├── ImpossibleGame.tsx        # Core game component with word guessing logic
+│   ├── Leaderboard.tsx           # Winners hall of fame and recent plays
+│   ├── HelperGame.tsx            # Friend helper interface for suggestions
+│   ├── ThemeSwitcher.tsx         # Theme switching component (3 themes)
+│   ├── lib/
+│   │   └── utils.ts              # Utility functions
+│   ├── index.css                 # CSS variables and Neobrutalism design system
+│   └── main.tsx                  # React bootstrap with Convex Provider
+├── convex/                       # Backend Convex functions and schema
+│   ├── schema.ts                 # Database schema definitions
+│   ├── game.ts                   # Core game logic, AI integration, word generation
+│   ├── leaderboard.ts            # Leaderboard queries and analytics
+│   ├── router.ts                 # HTTP routing (unused currently)
+│   ├── http.ts                   # HTTP endpoints (unused currently)
+│   └── _generated/               # Auto-generated Convex types and API
+├── public/
+│   └── og-preview.png            # Social media preview image
+├── components.json               # Shadcn/ui component configuration
+├── index.html                    # HTML entry point with social meta tags
+├── package.json                  # Dependencies and scripts
+├── vite.config.ts                # Vite build configuration
+├── tailwind.config.js            # Tailwind CSS configuration
+├── postcss.config.cjs            # PostCSS configuration
+└── tsconfig.*.json               # TypeScript configurations
+```
 
 ## Design System
 

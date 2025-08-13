@@ -6,6 +6,7 @@ import { Leaderboard } from "./Leaderboard";
 import { ImpossibleGame } from "./ImpossibleGame";
 import { HelperGame } from "./HelperGame";
 import { ThemeSwitcher } from "./ThemeSwitcher";
+import { Dashboard } from "./Dashboard";
 import { Id } from "../convex/_generated/dataModel";
 
 interface GameCompletionData {
@@ -17,7 +18,7 @@ interface GameCompletionData {
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<
-    "game" | "leaderboard" | "playing" | "helper"
+    "game" | "leaderboard" | "playing" | "helper" | "dashboard"
   >("game");
   const [gameCompletionData, setGameCompletionData] =
     useState<GameCompletionData | null>(null);
@@ -41,6 +42,11 @@ export default function App() {
     if (invite) {
       setInviteId(invite as Id<"invites">);
       setCurrentPage("helper");
+    }
+
+    // Check for dashboard route
+    if (window.location.pathname === "/dashboard") {
+      setCurrentPage("dashboard");
     }
   }, [trackEvent]);
 
@@ -309,6 +315,8 @@ export default function App() {
             <ImpossibleGame onGameComplete={handleGameComplete} />
           ) : currentPage === "helper" && inviteId ? (
             <HelperGame inviteId={inviteId} />
+          ) : currentPage === "dashboard" ? (
+            <Dashboard />
           ) : (
             <Leaderboard
               gameCompletionData={gameCompletionData}
