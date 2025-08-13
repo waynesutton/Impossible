@@ -39,30 +39,53 @@ export function ThemeSwitcher() {
     localStorage.setItem("impossible-theme", theme);
   };
 
-  const handleThemeChange = (theme: Theme) => {
-    setCurrentTheme(theme);
-    applyTheme(theme);
+  const handleThemeToggle = () => {
+    const themes: Theme[] = ["neobrutalism", "original", "dark"];
+    const currentIndex = themes.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    const nextTheme = themes[nextIndex];
+
+    setCurrentTheme(nextTheme);
+    applyTheme(nextTheme);
   };
 
-  const themes = [
-    { id: "neobrutalism", icon: Palette, label: "Brutal" },
-    { id: "original", icon: FileText, label: "Clean" },
-    { id: "dark", icon: Moon, label: "Dark" },
-  ] as const;
+  const getThemeIcon = () => {
+    switch (currentTheme) {
+      case "neobrutalism":
+        return Palette;
+      case "original":
+        return FileText;
+      case "dark":
+        return Moon;
+      default:
+        return Palette;
+    }
+  };
+
+  const getThemeLabel = () => {
+    switch (currentTheme) {
+      case "neobrutalism":
+        return "Brutal";
+      case "original":
+        return "Clean";
+      case "dark":
+        return "Dark";
+      default:
+        return "Brutal";
+    }
+  };
+
+  const CurrentIcon = getThemeIcon();
 
   return (
-    <div className="theme-switcher">
-      {themes.map((theme) => (
-        <button
-          key={theme.id}
-          onClick={() => handleThemeChange(theme.id)}
-          className={`theme-button ${currentTheme === theme.id ? "active" : ""}`}
-          title={`Switch to ${theme.label} theme`}
-          aria-label={`Switch to ${theme.label} theme`}
-        >
-          <theme.icon size={20} />
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={handleThemeToggle}
+      className="theme-button"
+      title={`Current: ${getThemeLabel()} - Click to switch theme`}
+      aria-label={`Current theme: ${getThemeLabel()}. Click to cycle themes.`}
+      aria-live="polite"
+    >
+      <CurrentIcon size={20} />
+    </button>
   );
 }
