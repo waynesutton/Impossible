@@ -83,6 +83,133 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Challenge Mode Analytics */}
+      <div className="brutal-card">
+        <h2
+          className="brutal-text-lg mb-6"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Challenge Mode Analytics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.challengeMode.challengesCreated.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Challenges Created
+            </div>
+          </div>
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.challengeMode.challengesCompleted.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              1v1 Games Completed
+            </div>
+          </div>
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.challengeMode.challengeLinksClicked.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Challenge Links Clicked
+            </div>
+          </div>
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.challengeMode.rematchRequests.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Rematch Requests
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="text-center">
+            <div
+              className="brutal-text-xl mb-2"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.challengeMode.averageChallengeScore.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Average Challenge Score
+            </div>
+          </div>
+          <div className="text-center">
+            <div
+              className="brutal-text-xl mb-2"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.challengeMode.topChallengeScore.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Highest Challenge Score
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Link Analytics */}
+      <div className="brutal-card">
+        <h2
+          className="brutal-text-lg mb-6"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Link Analytics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="text-center">
+            <div
+              className="brutal-text-xl mb-2"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.linkAnalytics.normalModeLinksClicked.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Normal Mode Links Clicked
+            </div>
+            <div
+              className="text-xs mt-1"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Friend invite links used in normal games
+            </div>
+          </div>
+          <div className="text-center">
+            <div
+              className="brutal-text-xl mb-2"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.linkAnalytics.challengeLinksShared.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Challenge Links Shared
+            </div>
+            <div
+              className="text-xs mt-1"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Total challenge links created and shared
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Game Performance */}
       <div className="brutal-card">
         <h2
@@ -349,10 +476,13 @@ export function Dashboard() {
                 </div>
                 <div className="flex gap-6 text-sm">
                   <div style={{ color: "var(--text-secondary)" }}>
-                    {activity.gamesPlayed} games
+                    {activity.gamesPlayed} normal games
                   </div>
                   <div style={{ color: "var(--text-secondary)" }}>
                     {activity.successfulGames} successful
+                  </div>
+                  <div style={{ color: "var(--text-secondary)" }}>
+                    {activity.challengeBattles || 0} challenge battles
                   </div>
                   <div style={{ color: "var(--text-secondary)" }}>
                     {activity.gamesPlayed > 0

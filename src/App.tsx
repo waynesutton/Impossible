@@ -1,12 +1,14 @@
 import { Toaster } from "sonner";
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Leaderboard } from "./Leaderboard";
 import { ImpossibleGame } from "./ImpossibleGame";
 import { HelperGame } from "./HelperGame";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { Dashboard } from "./Dashboard";
+import { ChallengeSetup } from "./ChallengeSetup";
+import { ChallengeMode } from "./ChallengeMode";
 import { Id } from "../convex/_generated/dataModel";
 
 interface GameCompletionData {
@@ -14,18 +16,32 @@ interface GameCompletionData {
   word: string;
   attempts: number;
   usedSecretWord?: boolean;
+  startChallenge?: boolean;
 }
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<
-    "game" | "leaderboard" | "playing" | "helper" | "dashboard"
+    | "game"
+    | "leaderboard"
+    | "playing"
+    | "helper"
+    | "dashboard"
+    | "challenge"
+    | "challenge-setup"
   >("game");
   const [gameCompletionData, setGameCompletionData] =
     useState<GameCompletionData | null>(null);
   const [inviteId, setInviteId] = useState<Id<"invites"> | null>(null);
+  const [challengeId, setChallengeId] = useState<Id<"challengeBattles"> | null>(
+    null,
+  );
+  const [challengeCompletionData, setChallengeCompletionData] =
+    useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const startNewGame = useMutation(api.game.startNewGame);
   const trackEvent = useMutation(api.leaderboard.trackEvent);
+
+  // Challenge invite handling will be added here
 
   // Track homepage view and check for invite parameter on load
   useEffect(() => {
@@ -39,9 +55,14 @@ export default function App() {
 
     const params = new URLSearchParams(window.location.search);
     const invite = params.get("invite");
+    const challengeInvite = params.get("challenge");
+
     if (invite) {
       setInviteId(invite as Id<"invites">);
       setCurrentPage("helper");
+    } else if (challengeInvite) {
+      setChallengeId(challengeInvite as Id<"challengeBattles">);
+      setCurrentPage("challenge");
     }
 
     // Check for dashboard route
@@ -49,6 +70,8 @@ export default function App() {
       setCurrentPage("dashboard");
     }
   }, [trackEvent]);
+
+  // Challenge flow will be handled here
 
   // Close mobile menu when screen size changes or page changes
   useEffect(() => {
@@ -82,7 +105,14 @@ export default function App() {
   const handleGameComplete = (data: GameCompletionData) => {
     console.log("Game completed:", data);
     setGameCompletionData(data);
-    setCurrentPage("leaderboard");
+
+    if (data.startChallenge) {
+      // Navigate to challenge setup mode
+      setCurrentPage("challenge-setup");
+    } else {
+      // Normal game completion - go to leaderboard
+      setCurrentPage("leaderboard");
+    }
   };
 
   const handleStartNewGameFromLeaderboard = async () => {
@@ -93,6 +123,30 @@ export default function App() {
     } catch (error) {
       console.error("Failed to start new game:", error);
     }
+  };
+
+  const handleChallengeCreated = (challengeId: Id<"challengeBattles">) => {
+    setChallengeId(challengeId);
+    setCurrentPage("challenge");
+  };
+
+  const handleChallengeCancel = () => {
+    setGameCompletionData(null);
+    setCurrentPage("game");
+  };
+
+  const handleBackToHome = () => {
+    setChallengeId(null);
+    setGameCompletionData(null);
+    setChallengeCompletionData(null);
+    setCurrentPage("game");
+    // Clear URL parameters to prevent stale challenge state
+    window.history.replaceState({}, "", window.location.pathname);
+  };
+
+  const handleChallengeComplete = (data: any) => {
+    setChallengeCompletionData(data);
+    setCurrentPage("leaderboard");
   };
   return (
     <div
@@ -123,6 +177,8 @@ export default function App() {
               onClick={() => {
                 setCurrentPage("leaderboard");
                 setGameCompletionData(null); // Clear completion data when manually navigating to leaderboard
+                setChallengeId(null); // Clear challenge state
+                window.history.replaceState({}, "", window.location.pathname); // Clear URL params
               }}
               className={`brutal-nav-button ${
                 currentPage === "leaderboard" ? "active" : ""
@@ -295,6 +351,21 @@ export default function App() {
                       </p>
                     </div>
                   </div>
+                  <div className="flex items-start gap-3">
+                    <span className="brutal-badge">⚔️</span>
+                    <div>
+                      <strong
+                        className="brutal-text-md"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        Challenge:
+                      </strong>
+                      <p style={{ color: "var(--text-secondary)" }}>
+                        Battle your friends in head-to-head to guess the
+                        impossible word.
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <div
                   className="text-center mt-6 pt-4"
@@ -315,11 +386,23 @@ export default function App() {
             <ImpossibleGame onGameComplete={handleGameComplete} />
           ) : currentPage === "helper" && inviteId ? (
             <HelperGame inviteId={inviteId} />
+          ) : currentPage === "challenge-setup" ? (
+            <ChallengeSetup
+              onChallengeCreated={handleChallengeCreated}
+              onCancel={handleChallengeCancel}
+            />
+          ) : currentPage === "challenge" && challengeId ? (
+            <ChallengeMode
+              challengeId={challengeId}
+              onBackToHome={handleBackToHome}
+              onNavigateToLeaderboard={handleChallengeComplete}
+            />
           ) : currentPage === "dashboard" ? (
             <Dashboard />
           ) : (
             <Leaderboard
               gameCompletionData={gameCompletionData}
+              challengeCompletionData={challengeCompletionData}
               onStartNewGame={handleStartNewGameFromLeaderboard}
             />
           )}

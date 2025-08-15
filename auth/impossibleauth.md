@@ -2,24 +2,40 @@
 
 ## Overview
 
-This document provides a comprehensive guide for implementing Clerk authentication in the Impossible Game with role-based access control. The implementation will support:
+This document provides a comprehensive guide for implementing Clerk authentication in the Impossible Game with role-based access control. The implementation will support both single-player mode and the new challenge mode (1v1 battles) while maintaining backwards compatibility:
 
-- **Admin Role**: Access to `/dashboard` page with comprehensive analytics
-- **Authenticated Users**: Personal profile with their game history and scores
-- **Anonymous Players**: Can still play games without authentication (current behavior preserved)
-- **Public Leaderboard**: Remains accessible to all users
-- **Score Persistence**: Authenticated users can save and track their scores
+- **Admin Role**: Access to `/dashboard` page with comprehensive analytics for both game modes
+- **Authenticated Users**: Personal profile with game history, scores, and challenge statistics
+- **Anonymous Players**: Can still play both single-player and challenge modes without authentication (current behavior preserved)
+- **Public Leaderboard**: Remains accessible to all users, displays both single-player and challenge results
+- **Score Persistence**: Authenticated users can save and track scores across both game modes
+- **Challenge Mode**: Full head-to-head functionality available to anonymous users, with enhanced tracking for authenticated users
 
 ## Current System Analysis
 
 ### Existing Architecture
 
-The app currently uses a simple user system with:
+The app currently uses a simple user system with support for both single-player and challenge modes:
+
+#### Single Player Mode
 
 - Anonymous user creation via `getLoggedInUser()` in `convex/game.ts` and `convex/leaderboard.ts`
 - Users table with basic fields: `name`, `email`, `isAnonymous`
 - Game results linked to users via `userId` field
+- Friend helper system for collaborative word suggestions
+
+#### Challenge Mode (1v1 Battles)
+
+- Challenge battle sessions with real-time synchronization
+- Individual scoring system with speed bonuses and penalties
+- Challenge invitation links for head-to-head competition
+- Battle results tracking with winner determination
+
+#### Shared Systems
+
 - Dashboard analytics accessible at `/dashboard` route (currently unprotected)
+- Multi-section leaderboard showing both single-player and challenge results
+- Theme system supporting three modes (Neobrutalism, Original, Dark)
 
 ### Data Models
 
@@ -31,6 +47,7 @@ users: {
   isAnonymous: v.optional(v.boolean()),
 }
 
+// Single Player Mode
 gameResults: {
   userId: v.id("users"),
   gameId: v.string(),
@@ -42,6 +59,34 @@ gameResults: {
   playerName: v.optional(v.string()),
   isAnonymous: v.boolean(),
   usedSecretWord: v.optional(v.boolean()),
+}
+
+// Challenge Mode (1v1 Battles)
+challengeBattles: {
+  gameId: v.string(),
+  challengerUserId: v.id("users"),
+  opponentUserId: v.optional(v.id("users")),
+  challengerName: v.string(),
+  opponentName: v.optional(v.string()),
+  status: v.union(
+    v.literal("waiting_for_opponent"),
+    v.literal("in_progress"),
+    v.literal("completed")
+  ),
+  challengerScore: v.number(),
+  opponentScore: v.number(),
+  winner: v.optional(v.string()),
+  completedAt: v.optional(v.number()),
+}
+
+challengeWordAttempts: {
+  battleId: v.id("challengeBattles"),
+  wordIndex: v.number(),
+  player: v.union(v.literal("challenger"), v.literal("opponent")),
+  attempts: v.number(),
+  completed: v.boolean(),
+  finalScore: v.number(),
+  timeUsed: v.optional(v.number()),
 }
 ```
 
@@ -121,8 +166,63 @@ const applicationTables = {
     profileDisplayName: v.optional(v.string()), // For profile page
   }).index("by_clerk_id", ["clerkId"]),
 
-  // ... existing tables (gameWords, userAttempts, gameResults, etc.)
-  // Keep all existing table definitions as they are
+  // Single Player Mode Tables
+  gameWords: defineTable({
+    /* existing definition */
+  }),
+  userAttempts: defineTable({
+    /* existing definition */
+  }),
+  gameResults: defineTable({
+    /* existing definition */
+  }),
+  invites: defineTable({
+    /* existing definition */
+  }),
+  helpers: defineTable({
+    /* existing definition */
+  }),
+  suggestions: defineTable({
+    /* existing definition */
+  }),
+
+  // Challenge Mode Tables
+  challengeBattles: defineTable({
+    gameId: v.string(),
+    challengerUserId: v.id("users"),
+    opponentUserId: v.optional(v.id("users")),
+    challengerName: v.string(),
+    opponentName: v.optional(v.string()),
+    status: v.union(
+      v.literal("waiting_for_opponent"),
+      v.literal("ready_to_start"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+    ),
+    challengerScore: v.number(),
+    opponentScore: v.number(),
+    winner: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+  }).index("by_game_id", ["gameId"]),
+
+  challengeWordAttempts: defineTable({
+    battleId: v.id("challengeBattles"),
+    wordIndex: v.number(),
+    player: v.union(v.literal("challenger"), v.literal("opponent")),
+    attempts: v.number(),
+    completed: v.boolean(),
+    finalScore: v.number(),
+    timeUsed: v.optional(v.number()),
+  }).index("by_battle_and_player", ["battleId", "player"]),
+
+  challengeInvites: defineTable({
+    battleId: v.id("challengeBattles"),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    used: v.boolean(),
+  }).index("by_battle", ["battleId"]),
+
+  // ... other existing tables (analytics, etc.)
 };
 
 export default defineSchema({
@@ -243,7 +343,9 @@ export async function getCurrentUserId(
 
 ### Step 7: Update Game Functions
 
-Update `convex/game.ts` to use new auth system:
+Update both `convex/game.ts` and `convex/challengeBattle.ts` to use new auth system:
+
+#### Single Player Mode (`convex/game.ts`)
 
 ```typescript
 import { requireAuth, getCurrentUserId, getOrCreateUser } from "./auth/helpers";
@@ -254,16 +356,6 @@ async function getLoggedInUser(ctx: any) {
 }
 
 // Add new authenticated-only functions
-export const getCurrentGameAuthenticated = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAuth(ctx); // Require authentication
-    const userId = await getOrCreateUser(ctx);
-
-    // ... existing getCurrentGame logic but with authenticated user
-  },
-});
-
 export const getUserGameHistory = query({
   args: {},
   handler: async (ctx) => {
@@ -280,7 +372,76 @@ export const getUserGameHistory = query({
   },
 });
 
-// Keep existing functions as-is for anonymous play
+// Keep existing single-player functions as-is for anonymous play
+```
+
+#### Challenge Mode (`convex/challengeBattle.ts`)
+
+```typescript
+import { getCurrentUserId, getOrCreateUser } from "./auth/helpers";
+
+// Challenge creation supports both authenticated and anonymous users
+export const createChallenge = mutation({
+  args: { challengerName: v.string() },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx); // Works for both auth states
+
+    // Create challenge with user tracking
+    const challengeId = await ctx.db.insert("challengeBattles", {
+      gameId: generateUniqueId(),
+      challengerUserId: userId,
+      challengerName: args.challengerName,
+      status: "waiting_for_opponent",
+      challengerScore: 0,
+      opponentScore: 0,
+    });
+
+    return { challengeId, gameId: challenge.gameId };
+  },
+});
+
+// Challenge participation supports anonymous users
+export const acceptChallenge = mutation({
+  args: {
+    challengeId: v.id("challengeBattles"),
+    opponentName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserId(ctx); // Anonymous or authenticated
+
+    await ctx.db.patch(args.challengeId, {
+      opponentUserId: userId,
+      opponentName: args.opponentName,
+      status: "ready_to_start",
+    });
+  },
+});
+
+// Authenticated users get enhanced challenge statistics
+export const getUserChallengeHistory = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required for challenge history");
+    }
+
+    const userId = await getOrCreateUser(ctx);
+
+    const challenges = await ctx.db
+      .query("challengeBattles")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("challengerUserId"), userId),
+          q.eq(q.field("opponentUserId"), userId),
+        ),
+      )
+      .order("desc")
+      .take(25);
+
+    return challenges;
+  },
+});
 ```
 
 ### Step 8: Protect Admin Functions
@@ -313,12 +474,37 @@ export const getDashboardAnalyticsAdmin = query({
       .filter((q) => q.eq("isAnonymous", false))
       .collect();
 
+    // Challenge mode analytics
+    const challengeStats = await ctx.db
+      .query("challengeBattles")
+      .filter((q) => q.eq("status", "completed"))
+      .collect();
+
+    const totalChallenges = challengeStats.length;
+    const challengeCompletionRate =
+      totalChallenges > 0
+        ? (challengeStats.filter((c) => c.completedAt).length /
+            totalChallenges) *
+          100
+        : 0;
+
     return {
       ...analytics,
       totalRegisteredUsers: userRegistrations.length,
       anonymousVsRegistered: {
         anonymous: analytics.totalGames - userRegistrations.length,
         registered: userRegistrations.length,
+      },
+      challengeMode: {
+        totalChallenges,
+        completedChallenges: challengeStats.filter((c) => c.completedAt).length,
+        completionRate: challengeCompletionRate,
+        averageScore:
+          challengeStats.reduce(
+            (sum, c) => sum + c.challengerScore + c.opponentScore,
+            0,
+          ) /
+            (totalChallenges * 2) || 0,
       },
     };
   },
@@ -562,7 +748,7 @@ export function UserProfile() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="brutal-stats-card">
                 <div className="brutal-text-lg">{userStats.totalGames}</div>
-                <div className="text-sm">Games Played</div>
+                <div className="text-sm">Single Player Games</div>
               </div>
               <div className="brutal-stats-card">
                 <div className="brutal-text-lg">{userStats.wins}</div>
@@ -579,6 +765,39 @@ export function UserProfile() {
                 <div className="text-sm">Avg Attempts</div>
               </div>
             </div>
+
+            {/* Challenge Mode Statistics */}
+            {userStats.challengeStats && (
+              <div className="mt-6">
+                <h3 className="brutal-text-md mb-3">Challenge Battle Stats</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.challengeStats.totalChallenges}
+                    </div>
+                    <div className="text-sm">Challenges Played</div>
+                  </div>
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.challengeStats.challengesWon}
+                    </div>
+                    <div className="text-sm">Challenges Won</div>
+                  </div>
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.challengeStats.challengeWinRate}%
+                    </div>
+                    <div className="text-sm">Challenge Win Rate</div>
+                  </div>
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.challengeStats.averageScore}
+                    </div>
+                    <div className="text-sm">Avg Challenge Score</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -636,11 +855,21 @@ import { UserProfile } from "./components/UserProfile";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<
-    "game" | "leaderboard" | "playing" | "helper" | "dashboard" | "profile"
+    "game" | "leaderboard" | "playing" | "helper" | "dashboard" | "profile" | "challenge" | "challenge-setup"
   >("game");
 
   const { isAuthenticated } = useConvexAuth();
   const { user } = useUser();
+
+  // Handle challenge invitation URLs
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const challengeInvite = urlParams.get("challenge");
+    if (challengeInvite) {
+      setCurrentPage("challenge");
+      // Handle challenge acceptance flow
+    }
+  }, []);
 
   // ... existing code
 
@@ -708,8 +937,12 @@ export default function App() {
             <UserProfile />
           ) : currentPage === "dashboard" ? (
             <Dashboard />
+          ) : currentPage === "challenge" ? (
+            <ChallengeMode />
+          ) : currentPage === "challenge-setup" ? (
+            <ChallengeSetup />
           ) : (
-            /* ... existing page logic */
+            /* ... existing page logic including ImpossibleGame */
           )}
         </div>
       </main>
@@ -941,9 +1174,11 @@ Track authentication-related metrics:
 **Acceptance Criteria**:
 
 - [ ] Can sign in using Clerk authentication
-- [ ] Scores are permanently saved to profile
-- [ ] Can view personal game history
-- [ ] Can access profile page with statistics
+- [ ] Single-player scores are permanently saved to profile
+- [ ] Challenge battle results are permanently saved to profile
+- [ ] Can view personal game history for both modes
+- [ ] Can access profile page with comprehensive statistics
+- [ ] Can view challenge win/loss records and performance metrics
 
 #### Story 3: Admin User
 
@@ -954,7 +1189,9 @@ Track authentication-related metrics:
 **Acceptance Criteria**:
 
 - [ ] Can access admin dashboard at `/dashboard`
-- [ ] Can view comprehensive analytics
+- [ ] Can view comprehensive analytics for both single-player and challenge modes
+- [ ] Can see challenge completion rates and battle statistics
+- [ ] Can view user registration vs anonymous play metrics
 - [ ] Cannot access without admin role
 - [ ] Actions are logged for audit purposes
 
@@ -969,10 +1206,12 @@ Track authentication-related metrics:
 ### Definition of Done
 
 - [ ] All user stories implemented and tested
-- [ ] Security review completed
-- [ ] Performance impact assessed
-- [ ] Documentation updated
-- [ ] Monitoring and analytics in place
+- [ ] Single-player mode works seamlessly with and without authentication
+- [ ] Challenge mode supports both anonymous and authenticated players
+- [ ] Security review completed for both game modes
+- [ ] Performance impact assessed across all features
+- [ ] Documentation updated to reflect challenge mode integration
+- [ ] Monitoring and analytics in place for both modes
 - [ ] Deployment checklist completed
 
 This comprehensive guide provides everything needed to implement authentication while preserving the core game experience and adding powerful admin and user management capabilities.

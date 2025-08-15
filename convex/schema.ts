@@ -84,6 +84,74 @@ const applicationTables = {
     timestamp: v.number(),
     sessionId: v.optional(v.string()), // Track unique sessions
   }).index("by_event_type", ["eventType"]),
+
+  // Challenge Mode Tables (1v1 Challenger vs Opponent)
+  challengeBattles: defineTable({
+    gameId: v.string(), // Unique challenge session ID
+    challengerUserId: v.id("users"),
+    opponentUserId: v.optional(v.id("users")),
+    challengerName: v.string(),
+    opponentName: v.optional(v.string()),
+    status: v.union(
+      v.literal("waiting_for_opponent"),
+      v.literal("ready_to_start"),
+      v.literal("challenger_ready"),
+      v.literal("opponent_ready"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+    ),
+    currentWordIndex: v.number(), // Track progression through 3 words
+    challengerScore: v.number(),
+    opponentScore: v.number(),
+    winner: v.optional(v.string()), // "challenger" | "opponent" | "tie"
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    currentRoundStartTime: v.optional(v.number()), // For 60-second timer
+    maxWords: v.number(), // Always 3 words for challenge mode
+  })
+    .index("by_game_id", ["gameId"])
+    .index("by_status", ["status"])
+    .index("by_completion", ["completedAt"]),
+
+  challengeWordAttempts: defineTable({
+    battleId: v.id("challengeBattles"),
+    wordIndex: v.number(), // 0, 1, or 2 (for 3 words)
+    gameWordId: v.id("gameWords"), // Reference to the actual word
+    player: v.union(v.literal("challenger"), v.literal("opponent")),
+    attempts: v.number(),
+    completed: v.boolean(),
+    completedAt: v.optional(v.number()),
+    currentGuess: v.string(),
+    finalScore: v.number(), // Points earned for this word
+    timeUsed: v.optional(v.number()), // Milliseconds taken to complete
+    usedHint: v.boolean(),
+    usedClue: v.boolean(),
+    usedInviteFriend: v.boolean(),
+  })
+    .index("by_battle_and_word", ["battleId", "wordIndex"])
+    .index("by_battle_player_word", ["battleId", "player", "wordIndex"]),
+
+  challengeInvites: defineTable({
+    battleId: v.id("challengeBattles"),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    used: v.boolean(),
+  }).index("by_battle", ["battleId"]),
+
+  // Rematch requests for challenge battles
+  rematchRequests: defineTable({
+    originalChallengeId: v.id("challengeBattles"),
+    requestedBy: v.union(v.literal("challenger"), v.literal("opponent")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("expired"),
+    ),
+    requestedAt: v.number(),
+    respondedAt: v.optional(v.number()),
+    newChallengeId: v.optional(v.id("challengeBattles")), // Store new challenge ID when accepted
+  }).index("by_challenge", ["originalChallengeId"]),
 };
 
 export default defineSchema({

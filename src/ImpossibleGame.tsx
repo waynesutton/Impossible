@@ -10,6 +10,7 @@ interface ImpossibleGameProps {
     word: string;
     attempts: number;
     usedSecretWord?: boolean;
+    startChallenge?: boolean;
   }) => void;
 }
 
@@ -310,6 +311,18 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     setErrorMessage(null);
 
     await startNewGame();
+  };
+
+  const handleStartChallenge = () => {
+    // Navigate to challenge mode - this will be handled by parent App component
+    if (onGameComplete) {
+      onGameComplete({
+        won: false,
+        word: currentGame?.word || "",
+        attempts: currentGame?.attempts || 0,
+        startChallenge: true, // Flag to indicate challenge start
+      });
+    }
   };
 
   if (!currentGame) {
@@ -677,6 +690,38 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
         </div>
       )}
       <div>{renderGameStatus()}</div>
+
+      {/* Challenge Mode Button - Below attempts box */}
+      {currentGame.canPlay && !currentGame.completed && (
+        <div className="text-center space-y-4">
+          {/* Divider line */}
+          <hr
+            className="my-4 border-t-2"
+            style={{ borderColor: "var(--border-color)" }}
+          />
+
+          <button
+            onClick={handleStartChallenge}
+            className="brutal-button warning px-6 py-2"
+            style={{
+              background: "var(--bg-warning)",
+              border: "3px solid var(--border-warning)",
+              color: "var(--text-warning)",
+            }}
+          >
+            Challenge
+          </button>
+
+          {/* Descriptive text */}
+          <p
+            className="text-sm mt-3 px-4"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Start a new game and battle your friends in head-to-head to guess
+            the impossible word.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

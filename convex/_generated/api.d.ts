@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as challengeBattle from "../challengeBattle.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
@@ -27,6 +28,7 @@ import type * as router from "../router.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  challengeBattle: typeof challengeBattle;
   game: typeof game;
   http: typeof http;
   leaderboard: typeof leaderboard;

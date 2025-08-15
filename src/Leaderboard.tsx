@@ -9,20 +9,41 @@ interface GameCompletionData {
   usedSecretWord?: boolean;
 }
 
+interface ChallengeCompletionData {
+  challengeId: string;
+  challengerName: string;
+  opponentName: string;
+  words: string[];
+  finalScores: {
+    challenger: number;
+    opponent: number;
+  };
+  winner?: string;
+}
+
 interface LeaderboardProps {
   gameCompletionData?: GameCompletionData | null;
+  challengeCompletionData?: ChallengeCompletionData | null;
   onStartNewGame?: () => void;
 }
 
 export function Leaderboard({
   gameCompletionData,
+  challengeCompletionData,
   onStartNewGame,
 }: LeaderboardProps) {
   const leaderboard = useQuery(api.leaderboard.getLeaderboard);
   const userStats = useQuery(api.leaderboard.getUserStats);
+  const challengeBattles = useQuery(
+    api.challengeBattle.getRecentChallengeBattles,
+    { limit: 3 },
+  );
+  const challengeStats = useQuery(api.challengeBattle.getChallengeBattleStats);
   const updateDisplayName = useMutation(api.game.updateDisplayName);
 
-  const [showNameEntry, setShowNameEntry] = useState(!!gameCompletionData);
+  const [showNameEntry, setShowNameEntry] = useState(
+    !!gameCompletionData && !challengeCompletionData,
+  );
   const [displayName, setDisplayName] = useState("");
 
   // Pagination state for recent plays
@@ -34,6 +55,14 @@ export function Leaderboard({
     undefined,
   );
   const [showAllShameGames, setShowAllShameGames] = useState(false);
+  const [challengeCursor, setChallengeCursor] = useState<string | undefined>(
+    undefined,
+  );
+  const [currentChallengeCursor, setCurrentChallengeCursor] = useState<
+    string | undefined
+  >(undefined);
+  const [allChallengeBattles, setAllChallengeBattles] = useState<any[]>([]);
+  const [loadingMoreChallenges, setLoadingMoreChallenges] = useState(false);
   // State for managing Winners Hall of Fame pagination by attempt count
   const [attemptDisplayCounts, setAttemptDisplayCounts] = useState<
     Record<number, number>
@@ -49,10 +78,28 @@ export function Leaderboard({
     limit: 10,
   });
 
+  // Load initial challenge battles (5)
+  useEffect(() => {
+    if (challengeBattles?.battles && allChallengeBattles.length === 0) {
+      setAllChallengeBattles(challengeBattles.battles);
+      if (!challengeBattles.isDone) {
+        setChallengeCursor(challengeBattles.continueCursor);
+      }
+    }
+  }, [challengeBattles]);
+
   // Query for loading more data with cursor
   const moreRecentPlaysData = useQuery(
     api.leaderboard.getRecentPlays,
     currentCursor ? { cursor: currentCursor, limit: 10 } : "skip",
+  );
+
+  // Query for loading more challenge battles
+  const moreChallengeBattlesData = useQuery(
+    api.challengeBattle.getRecentChallengeBattles,
+    currentChallengeCursor
+      ? { cursor: currentChallengeCursor, limit: 3 }
+      : "skip",
   );
 
   // Initialize allRecentPlays with first batch using useEffect
@@ -75,11 +122,37 @@ export function Leaderboard({
     }
   }, [moreRecentPlaysData, loadingMore]);
 
+  // Handle loading more challenge battles
+  useEffect(() => {
+    if (moreChallengeBattlesData && loadingMoreChallenges) {
+      setAllChallengeBattles((prev) => [
+        ...prev,
+        ...moreChallengeBattlesData.battles,
+      ]);
+      setChallengeCursor(moreChallengeBattlesData.continueCursor);
+      setLoadingMoreChallenges(false);
+      setCurrentChallengeCursor(undefined); // Reset current cursor
+    }
+  }, [moreChallengeBattlesData, loadingMoreChallenges]);
+
   // Load more recent plays function
   const loadMoreRecentPlays = () => {
     if (!hasMoreData || loadingMore || !nextCursor) return;
     setLoadingMore(true);
     setCurrentCursor(nextCursor); // This will trigger the query
+  };
+
+  // Load more challenge battles function
+  const loadMoreChallengeBattles = () => {
+    if (
+      !challengeBattles ||
+      challengeBattles.isDone ||
+      loadingMoreChallenges ||
+      !challengeCursor
+    )
+      return;
+    setLoadingMoreChallenges(true);
+    setCurrentChallengeCursor(challengeCursor); // This will trigger the query
   };
 
   // Load more games for a specific attempt count
@@ -129,7 +202,7 @@ export function Leaderboard({
   return (
     <div className="space-y-8">
       {/* Game Completion Section */}
-      {gameCompletionData && (
+      {gameCompletionData && !challengeCompletionData && (
         <div className="brutal-card text-center">
           {gameCompletionData.won ? (
             <div className="space-y-4">
@@ -204,6 +277,111 @@ export function Leaderboard({
               </p>
             </div>
           )}
+
+          {/* Name Entry Form */}
+          {showNameEntry && (
+            <div className="mt-6 space-y-4">
+              <p
+                className="brutal-text-md"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Add your name to the leaderboard (optional):
+              </p>
+              <form onSubmit={handleNameSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="brutal-input w-full"
+                  maxLength={20}
+                />
+                <div className="flex gap-3 justify-center">
+                  <button type="submit" className="brutal-button px-6 py-2">
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSkipNameEntry}
+                    className="brutal-button secondary px-6 py-2"
+                  >
+                    Skip
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Start New Game Button - shown after name entry or always if no name entry */}
+          {!showNameEntry && onStartNewGame && (
+            <div className="mt-6">
+              <button
+                onClick={onStartNewGame}
+                className="brutal-button px-8 py-4 text-lg"
+              >
+                Start New Game
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Challenge Completion Section */}
+      {challengeCompletionData && (
+        <div className="brutal-card text-center">
+          <div className="space-y-4">
+            <div
+              className="brutal-text-xl"
+              style={{ color: "var(--bg-success)" }}
+            >
+              🎉 Challenge Complete!
+            </div>
+            <p
+              className="brutal-text-md"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {challengeCompletionData.challengerName} vs{" "}
+              {challengeCompletionData.opponentName}
+            </p>
+            <div className="brutal-badge text-lg">
+              Final Scores: {challengeCompletionData.finalScores.challenger} -{" "}
+              {challengeCompletionData.finalScores.opponent}
+            </div>
+
+            {/* Show the words that were guessed */}
+            <div className="mt-6">
+              <h3 className="text-lg font-bold mb-4">Words You Played:</h3>
+              <div className="space-y-3">
+                {challengeCompletionData.words.map((word, index) => (
+                  <div
+                    key={index}
+                    className="w-full py-4 px-6 text-center font-black text-xl"
+                    style={{
+                      background: "#F4D03F",
+                      border: "3px solid #D4AF37",
+                      color: "#2C3E50",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    WORD {index + 1}: {word.toUpperCase()}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {challengeCompletionData.winner && (
+              <p
+                className="text-lg font-bold"
+                style={{ color: "var(--text-success)" }}
+              >
+                Winner:{" "}
+                {challengeCompletionData.winner === "challenger"
+                  ? challengeCompletionData.challengerName
+                  : challengeCompletionData.opponentName}
+                !
+              </p>
+            )}
+          </div>
 
           {/* Name Entry Form */}
           {showNameEntry && (
@@ -335,7 +513,7 @@ export function Leaderboard({
         </div>
       )}
 
-      {/* Winners Hall of Fame */}
+      {/* Individual Games Section */}
       <div className="space-y-6">
         <div className="brutal-card text-center">
           <h2
@@ -616,6 +794,157 @@ export function Leaderboard({
             )}
           </div>
         )}
+
+        {/* Challenge Battles Section */}
+        <div className="space-y-6">
+          <div className="brutal-card text-center">
+            <h2
+              className="brutal-text-lg mb-4"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Challenge Battles
+            </h2>
+
+            {challengeStats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div className="brutal-stat">
+                  <div className="brutal-stat-number">
+                    {challengeStats.totalBattles}
+                  </div>
+                  <div className="brutal-stat-label">Total Battles</div>
+                </div>
+                <div className="brutal-stat">
+                  <div className="brutal-stat-number">
+                    {challengeStats.totalCompleted}
+                  </div>
+                  <div className="brutal-stat-label">Completed</div>
+                </div>
+                <div className="brutal-stat">
+                  <div className="brutal-stat-number">
+                    {challengeStats.averageScore}
+                  </div>
+                  <div className="brutal-stat-label">Avg Score</div>
+                </div>
+                <div className="brutal-stat">
+                  <div className="brutal-stat-number">
+                    {challengeStats.topScore}
+                  </div>
+                  <div className="brutal-stat-label">Top Score</div>
+                </div>
+              </div>
+            )}
+
+            {/* Last 5 Challenge Battles */}
+            {allChallengeBattles.length > 0 ? (
+              <div className="mt-6">
+                <h3
+                  className="text-lg font-bold mb-4"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  Recent Battles
+                </h3>
+                <div className="space-y-3">
+                  {allChallengeBattles.slice(0, 3).map((battle: any) => (
+                    <div
+                      key={battle._id}
+                      className="brutal-leaderboard-item"
+                      style={{ background: "var(--bg-warning)" }}
+                    >
+                      <div className="w-full">
+                        <div className="challenger-vs-opponent mb-4">
+                          <div className="challenger-score">
+                            <h4 className="font-bold">
+                              {battle.challengerName}
+                            </h4>
+                            <p className="text-2xl font-black">
+                              {battle.challengerScore}
+                            </p>
+                            <p
+                              className="text-xs"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              Challenger
+                            </p>
+                          </div>
+
+                          <div className="vs-divider text-lg">VS</div>
+
+                          <div className="opponent-score">
+                            <h4 className="font-bold">{battle.opponentName}</h4>
+                            <p className="text-2xl font-black">
+                              {battle.opponentScore}
+                            </p>
+                            <p
+                              className="text-xs"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              Opponent
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-center">
+                          <div className="text-sm font-bold mb-1">
+                            {battle.winner === "challenger" && (
+                              <span style={{ color: "var(--text-success)" }}>
+                                {battle.challengerName} Wins!
+                              </span>
+                            )}
+                            {battle.winner === "opponent" && (
+                              <span style={{ color: "var(--text-success)" }}>
+                                {battle.opponentName} Wins!
+                              </span>
+                            )}
+                            {!battle.winner && (
+                              <span style={{ color: "var(--text-secondary)" }}>
+                                Tie Game!
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            className="text-xs"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {formatTime(battle.completedAt)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p style={{ color: "var(--text-secondary)" }}>
+                  No challenge battles yet. Start a challenge to see results
+                  here!
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Load More Challenges Button - Below the box */}
+          {allChallengeBattles.length > 3 &&
+            challengeBattles &&
+            !challengeBattles.isDone && (
+              <div className="text-center">
+                <button
+                  onClick={loadMoreChallengeBattles}
+                  disabled={loadingMoreChallenges}
+                  className="brutal-button secondary px-6 py-3"
+                >
+                  {loadingMoreChallenges ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-800"></div>
+                      Loading...
+                    </div>
+                  ) : (
+                    "Load More Challenges"
+                  )}
+                </button>
+              </div>
+            )}
+        </div>
       </div>
     </div>
   );
