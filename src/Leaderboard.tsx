@@ -237,7 +237,7 @@ export function Leaderboard({
                     className="brutal-text-xl"
                     style={{ color: "var(--bg-success)" }}
                   >
-                    🎉 Congratulations!
+                    Congratulations!
                   </div>
                   <p
                     className="brutal-text-md"
@@ -334,7 +334,7 @@ export function Leaderboard({
               className="brutal-text-xl"
               style={{ color: "var(--bg-success)" }}
             >
-              🎉 Challenge Complete!
+              Challenge Complete!
             </div>
             <p
               className="brutal-text-md"

@@ -875,6 +875,60 @@ body {
   color: var(--text-primary);
 }
 
+/* Mobile optimizations for challenger vs opponent */
+@media (max-width: 768px) {
+  .challenger-vs-opponent {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .challenger-score,
+  .opponent-score {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .challenger-score h3,
+  .opponent-score h3 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .challenger-score p,
+  .opponent-score p {
+    font-size: 1.5rem !important;
+    line-height: 1.2;
+  }
+
+  .challenger-score .text-sm,
+  .opponent-score .text-sm {
+    font-size: 0.75rem !important;
+  }
+
+  .vs-divider {
+    font-size: 1.5rem;
+    order: 2;
+    margin: 0.25rem 0;
+  }
+
+  /* Ensure challenger comes first, vs-divider second, opponent third */
+  .challenger-score {
+    order: 1;
+  }
+
+  .opponent-score {
+    order: 3;
+  }
+
+  /* Extra small scores for final results on mobile */
+  .challenger-score .text-3xl,
+  .opponent-score .text-3xl {
+    font-size: 1.75rem !important;
+  }
+}
+
 /* Smaller challenge buttons */
 .challenge-button {
   padding: 0.5rem 1rem !important;

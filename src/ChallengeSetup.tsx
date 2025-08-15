@@ -145,16 +145,16 @@ export function ChallengeSetup({
               <label className="block text-sm font-medium mb-2">
                 Challenge Link:
               </label>
-              <div className="flex gap-2">
+              <div className="space-y-2">
                 <input
                   type="text"
                   value={challengeLink}
                   readOnly
-                  className="brutal-input flex-1"
+                  className="brutal-input w-full"
                 />
                 <button
                   onClick={() => copyToClipboard(challengeLink)}
-                  className="brutal-button secondary"
+                  className="brutal-button secondary w-full"
                 >
                   {showCopySuccess ? "Copied!" : "Copy"}
                 </button>

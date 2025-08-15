@@ -494,6 +494,28 @@ export const submitChallengeGuess = mutation({
       if (challenge.currentWordIndex >= challenge.maxWords - 1) {
         // Last word completed - end the game immediately
         gameCompleted = true;
+
+        // Update challenge scores first to get the latest values
+        const updatedChallenge = await ctx.db.get(args.challengeId);
+        if (!updatedChallenge) throw new Error("Challenge not found");
+
+        // Determine winner based on final scores
+        let winner = undefined;
+        if (updatedChallenge.challengerScore > updatedChallenge.opponentScore) {
+          winner = "challenger";
+        } else if (
+          updatedChallenge.opponentScore > updatedChallenge.challengerScore
+        ) {
+          winner = "opponent";
+        }
+        // If scores are equal, winner remains undefined (tie)
+
+        // Mark challenge as completed immediately
+        await ctx.db.patch(args.challengeId, {
+          status: "completed",
+          completedAt: Date.now(),
+          winner,
+        });
       } else {
         // Advance to next word
         await ctx.db.patch(args.challengeId, {
@@ -623,6 +645,28 @@ export const skipChallengeWord = mutation({
       if (challenge.currentWordIndex >= challenge.maxWords - 1) {
         // Last word completed - end the game immediately
         gameCompleted = true;
+
+        // Get the latest challenge data to determine winner
+        const updatedChallenge = await ctx.db.get(args.challengeId);
+        if (!updatedChallenge) throw new Error("Challenge not found");
+
+        // Determine winner based on final scores
+        let winner = undefined;
+        if (updatedChallenge.challengerScore > updatedChallenge.opponentScore) {
+          winner = "challenger";
+        } else if (
+          updatedChallenge.opponentScore > updatedChallenge.challengerScore
+        ) {
+          winner = "opponent";
+        }
+        // If scores are equal, winner remains undefined (tie)
+
+        // Mark challenge as completed immediately
+        await ctx.db.patch(args.challengeId, {
+          status: "completed",
+          completedAt: Date.now(),
+          winner,
+        });
       } else {
         // Advance to next word
         await ctx.db.patch(args.challengeId, {
