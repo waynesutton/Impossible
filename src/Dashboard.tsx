@@ -218,7 +218,7 @@ export function Dashboard() {
         >
           Game Performance
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="text-center">
             <div
               className="brutal-text-xl mb-2"
@@ -239,17 +239,6 @@ export function Dashboard() {
             </div>
             <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
               Average Attempts
-            </div>
-          </div>
-          <div className="text-center">
-            <div
-              className="brutal-text-xl mb-2"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {analytics.totalHomepageViews.toLocaleString()}
-            </div>
-            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Homepage Views
             </div>
           </div>
         </div>

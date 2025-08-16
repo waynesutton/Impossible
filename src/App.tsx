@@ -39,20 +39,11 @@ export default function App() {
     useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const startNewGame = useMutation(api.game.startNewGame);
-  const trackEvent = useMutation(api.leaderboard.trackEvent);
 
   // Challenge invite handling will be added here
 
-  // Track homepage view and check for invite parameter on load
+  // Check for invite parameter on load
   useEffect(() => {
-    // Generate a simple session ID based on timestamp and random number
-    const sessionId = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-
-    // Track homepage view
-    trackEvent({ eventType: "homepage_view", sessionId }).catch((error) => {
-      console.error("Failed to track homepage view:", error);
-    });
-
     const params = new URLSearchParams(window.location.search);
     const invite = params.get("invite");
     const challengeInvite = params.get("challenge");
@@ -69,7 +60,7 @@ export default function App() {
     if (window.location.pathname === "/dashboard") {
       setCurrentPage("dashboard");
     }
-  }, [trackEvent]);
+  }, []);
 
   // Challenge flow will be handled here
 
