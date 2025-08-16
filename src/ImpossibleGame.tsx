@@ -630,7 +630,9 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
                 disabled={isCreatingInvite || isGameOver}
                 className="brutal-button px-6 py-3 disabled:opacity-50"
               >
-                {isCreatingInvite ? "Creating invite..." : "Invite a Friend"}
+                {isCreatingInvite
+                  ? "Creating invite..."
+                  : "Ask a Friend for Help"}
               </button>
             ) : (
               <div className="brutal-card">
@@ -709,7 +711,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
               color: "var(--text-warning)",
             }}
           >
-            Challenge
+            Challenge a Friend
           </button>
 
           {/* Descriptive text */}
@@ -717,8 +719,10 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
             className="text-sm mt-3 px-4"
             style={{ color: "var(--text-secondary)" }}
           >
-            Start a new game and battle your friends in head-to-head to guess
-            the impossible word.
+            <strong>
+              Start a new game and battle your friends in head-to-head to guess
+              the impossible word.
+            </strong>
           </p>
         </div>
       )}
