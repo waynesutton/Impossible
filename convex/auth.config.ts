@@ -2,7 +2,7 @@
 export default {
   providers: [
     {
-      domain: "https://climbing-iguana-87.clerk.accounts.dev",
+      domain: "https://clerk.impossible.fun",
       applicationID: "convex",
     },
   ],
