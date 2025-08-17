@@ -477,7 +477,7 @@ function ChallengeGameplay({
               }
               className="brutal-button secondary challenge-button"
             >
-              {userAttempt?.usedHint ? "Show Hint Again" : "Ask for Help"}
+              {userAttempt?.usedHint ? "Show Hint Again" : "Ask for Hint"}
             </button>
 
             <button
@@ -965,7 +965,7 @@ export function ChallengeMode({
               <ul className="text-sm space-y-1">
                 <li>• 3 words to guess</li>
                 <li>• 60 seconds per word</li>
-                <li>• Use Ask for Help & Ask for Clue features</li>
+                <li>• Use Ask for Hint & Ask for Clue features</li>
                 <li>• Highest total score wins!</li>
               </ul>
             </div>

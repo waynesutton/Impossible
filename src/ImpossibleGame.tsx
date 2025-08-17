@@ -672,7 +672,7 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
               >
                 {currentGame.hint === "Generating hint..."
                   ? "Getting hint..."
-                  : "Ask for Help"}
+                  : "Ask for hint"}
               </button>
               {currentGame.attempts >= 2 && (
                 <button

@@ -54,39 +54,54 @@ The Impossible Word game is a challenging word-guessing experience that combines
 ```
 impossible/
 ├── src/                          # Frontend React application
-│   ├── App.tsx                   # Main app shell with navigation and page routing
+│   ├── App.tsx                   # Main app shell with navigation, routing, and authentication
 │   ├── ImpossibleGame.tsx        # Core single-player game component with word guessing logic
 │   ├── ChallengeMode.tsx         # Challenge vs opponent game component for 1v1 battles
 │   ├── ChallengeSetup.tsx        # Challenge creation and invitation interface
+│   ├── Dashboard.tsx             # Admin dashboard with comprehensive analytics and moderation
 │   ├── Leaderboard.tsx           # Winners hall of fame, recent plays, and challenge results
 │   ├── HelperGame.tsx            # Friend helper interface for collaborative word suggestions
 │   ├── ThemeSwitcher.tsx         # Theme switching component (3 themes)
+│   ├── components/               # Reusable UI components
+│   │   ├── AuthButton.tsx        # Clerk authentication buttons (Sign In/Out, User Button)
+│   │   ├── MyScores.tsx          # Personal score history with pagination and deletion
+│   │   ├── UserProfile.tsx       # User profile component for authenticated users
+│   │   ├── ProtectedRoute.tsx    # Route protection wrapper for authenticated features
+│   │   ├── ConfirmDialog.tsx     # Reusable confirmation dialog component
+│   │   └── ShareableScoreHandler.tsx # Score sharing functionality
 │   ├── lib/
-│   │   └── utils.ts              # Utility functions
-│   ├── index.css                 # CSS variables and Neobrutalism design system
-│   └── main.tsx                  # React bootstrap with Convex Provider
+│   │   └── utils.ts              # Utility functions and helper methods
+│   ├── index.css                 # CSS variables and comprehensive design system
+│   └── main.tsx                  # React bootstrap with Convex and Clerk providers
 ├── convex/                       # Backend Convex functions and schema
-│   ├── schema.ts                 # Database schema definitions (includes challenge tables)
-│   ├── game.ts                   # Core single-player game logic, AI integration, word generation
+│   ├── auth.config.ts            # Clerk authentication configuration for Convex
+│   ├── auth/
+│   │   └── helpers.ts            # Authentication helper functions
+│   ├── schema.ts                 # Complete database schema (game + challenge + auth tables)
+│   ├── game.ts                   # Single-player game logic, AI integration, word generation
 │   ├── challengeBattle.ts        # Challenge mode logic, 1v1 battles, scoring system
-│   ├── leaderboard.ts            # Leaderboard queries, analytics, and challenge results
-│   ├── router.ts                 # HTTP routing (unused currently)
-│   ├── http.ts                   # HTTP endpoints (unused currently)
-│   └── _generated/               # Auto-generated Convex types and API
+│   ├── leaderboard.ts            # Leaderboard queries, analytics, and user statistics
+│   ├── router.ts                 # HTTP routing configuration
+│   ├── http.ts                   # HTTP endpoints for external integrations
+│   └── _generated/               # Auto-generated Convex types and API definitions
 ├── auth/                         # Authentication documentation and guides
 │   ├── impossibleauth.md         # Clerk authentication implementation guide
-│   └── clerk-auth-check.mdc      # Authentication verification checklist
-├── public/
-│   └── og-preview.png            # Social media preview image
+│   ├── clerk-auth-check.mdc      # Authentication verification checklist
+│   └── clerk-admin-fix.MD        # Admin dashboard setup and role configuration
+├── public/                       # Static assets and favicon collection
+│   ├── og-preview.png            # Social media preview image
+│   └── [favicon files]          # Comprehensive favicon collection for all platforms
 ├── components.json               # Shadcn/ui component configuration
-├── index.html                    # HTML entry point with social meta tags
+├── index.html                    # HTML entry point with meta tags and favicon links
 ├── package.json                  # Dependencies and scripts
-├── vite.config.ts                # Vite build configuration
-├── tailwind.config.js            # Tailwind CSS configuration
-├── postcss.config.cjs            # PostCSS configuration
+├── vite.config.ts                # Vite build configuration with Convex integration
+├── tailwind.config.js            # Tailwind CSS configuration with custom theme
+├── postcss.config.cjs            # PostCSS configuration for CSS processing
+├── eslint.config.js              # ESLint configuration for code quality
 ├── teamvs.md                     # Challenge mode PRD and technical specifications
-├── files.md                      # Project files documentation
-└── tsconfig.*.json               # TypeScript configurations
+├── files.md                      # Comprehensive project files documentation
+├── impossibleai.md               # AI integration documentation and prompts
+└── tsconfig.*.json               # TypeScript configurations for different environments
 ```
 
 ## Design System
@@ -166,11 +181,13 @@ Convex dev will watch functions in `convex/` and hot reload.
 - **challengeInvites**: shareable challenge invitation links and acceptance tracking
 - **rematchRequests**: rematch system for competitive replay between opponents
 
-### Authentication (Optional)
+### Authentication (Clerk Integration)
 
-- **authTables**: Clerk authentication integration for user accounts and profiles
-- **User roles**: admin access for analytics dashboard, regular users for personal profiles
-- **Score persistence**: authenticated users get permanent score history and statistics
+- **User Authentication**: Optional Clerk integration for enhanced user experience
+- **Personal Profiles**: Authenticated users get permanent score history and detailed statistics
+- **Admin Dashboard**: Role-based access to comprehensive analytics and moderation tools
+- **Score Management**: Ability to delete personal scores from both profile and public leaderboard
+- **Social Features**: User profiles with shareable score links and challenge history
 
 ## Leaderboard
 
@@ -191,6 +208,39 @@ The leaderboard features multiple sections to showcase different types of achiev
 
 - **Anonymous Users**: Scores appear on public leaderboards but are not saved to personal profiles
 - **Authenticated Users**: All scores saved permanently with access to detailed game history and statistics
+
+## Authentication Features
+
+The app includes comprehensive Clerk authentication integration providing enhanced features for registered users:
+
+### User Authentication
+
+- **Optional Login**: Core gameplay works without authentication
+- **Clerk Integration**: Secure authentication with social logins and email/password
+- **Persistent Sessions**: Stay logged in across browser sessions
+- **Role-Based Access**: Regular users and admin roles with different permissions
+
+### Personal Profiles (My Scores)
+
+- **Game History**: View paginated history of single-player games and challenge battles
+- **Quick Stats**: Personal statistics including win rate, total games, and challenge performance
+- **Score Management**: Delete scores from both personal profile and public leaderboard
+- **Share Functionality**: Generate shareable links to specific game results or challenge outcomes
+
+### Admin Dashboard
+
+- **Comprehensive Analytics**: Real-time statistics across all game modes and user activity
+- **Game Performance Metrics**: Success rates, attempt breakdowns, and player behavior analytics
+- **Challenge Mode Statistics**: Head-to-head battle analytics, completion rates, and scoring trends
+- **Moderation Tools**: Admin and player deletion tracking with detailed moderation statistics
+- **User Activity**: Session analytics, link sharing metrics, and engagement tracking
+- **Recent Activity**: 7-day activity breakdown with daily game and challenge statistics
+
+### Role-Based Features
+
+- **Regular Users**: Access to personal profiles, score history, and social features
+- **Admin Users**: Full dashboard access with site-wide analytics and moderation capabilities
+- **Anonymous Users**: Full gameplay experience without authentication requirements
 
 ## CSS Architecture
 
@@ -220,24 +270,33 @@ The styling system uses CSS variables for theming with these key components:
 
 ### Frontend Components
 
-- **src/App.tsx**: Main app shell with navigation and routing for all game modes
+- **src/App.tsx**: Main app shell with navigation, routing, and authentication integration
 - **src/ImpossibleGame.tsx**: Single-player gameplay UI and flow
 - **src/ChallengeMode.tsx**: Challenge vs opponent 1v1 battle interface
 - **src/ChallengeSetup.tsx**: Challenge creation and invitation management
+- **src/Dashboard.tsx**: Admin dashboard with comprehensive analytics and moderation tools
 - **src/Leaderboard.tsx**: Multi-section leaderboard (single-player + challenge results)
 - **src/HelperGame.tsx**: Friend helper interface for collaborative suggestions
 - **src/ThemeSwitcher.tsx**: Theme switching component (Neobrutalism/Original/Dark)
+- **src/components/AuthButton.tsx**: Clerk authentication buttons and user menu
+- **src/components/MyScores.tsx**: Personal score history with pagination and management
+- **src/components/ProtectedRoute.tsx**: Route protection wrapper for authenticated features
+- **src/components/UserProfile.tsx**: User profile component for authenticated users
 - **src/index.css**: CSS variables and comprehensive design system
 
 ### Backend Functions
 
-- **convex/game.ts**: Single-player game logic (queries/mutations/actions)
-- **convex/challengeBattle.ts**: Challenge mode logic, 1v1 battles, scoring system
-- **convex/leaderboard.ts**: Leaderboard queries for both game modes and analytics
+- **convex/game.ts**: Single-player game logic with authentication-aware score persistence
+- **convex/challengeBattle.ts**: Challenge mode logic, 1v1 battles, and scoring system
+- **convex/leaderboard.ts**: Leaderboard queries, analytics, and user statistics (role-based access)
 - **convex/schema.ts**: Complete database schema (single-player + challenge + auth tables)
+- **convex/auth.config.ts**: Clerk authentication configuration for Convex integration
+- **convex/auth/helpers.ts**: Authentication helper functions and user management
 
 ### Documentation
 
 - **teamvs.md**: Challenge mode PRD and technical implementation specifications
 - **auth/impossibleauth.md**: Clerk authentication integration guide and requirements
+- **auth/clerk-admin-fix.MD**: Admin dashboard setup and role configuration
+- **impossibleai.md**: AI integration documentation and prompt engineering
 - **files.md**: Comprehensive project files documentation
