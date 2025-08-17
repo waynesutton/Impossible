@@ -22,19 +22,25 @@ function getTimerDuration(wordIndex: number): number {
 // Demo User Management
 // =====================================
 
+import {
+  getCurrentUserIdForMutation,
+  getCurrentUserIdForQuery,
+  getOrCreateUser,
+  requireAuth,
+} from "./auth/helpers";
+
 // Create a dummy user for demo purposes since we removed auth
 async function getLoggedInUser(ctx: any) {
-  // Check if a demo user exists, if not create one
-  let user = await ctx.db.query("users").first();
-  if (!user) {
-    const userId = await ctx.db.insert("users", {
-      name: "Player",
-      email: "demo@example.com",
-      isAnonymous: false,
-    });
+  // Check if this is a mutation context
+  if ("insert" in ctx.db) {
+    return await getCurrentUserIdForMutation(ctx);
+  } else {
+    const userId = await getCurrentUserIdForQuery(ctx);
+    if (!userId) {
+      throw new Error("No user found for anonymous gameplay");
+    }
     return userId;
   }
-  return user._id;
 }
 
 // For testing: create test users
@@ -1632,7 +1638,13 @@ export const getRecentChallengeBattles = query({
     let query = ctx.db
       .query("challengeBattles")
       .withIndex("by_status", (q) => q.eq("status", "completed"))
-      .order("desc");
+      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("isHidden"), true),
+          q.neq(q.field("isDeleted"), true),
+        ),
+      );
 
     // Handle pagination cursor
     if (args.cursor) {
@@ -1831,6 +1843,267 @@ export const getChallengeResults = query({
         maxWords: challenge.maxWords,
       },
       wordResults,
+    };
+  },
+});
+
+// Authenticated users get enhanced challenge statistics
+export const getUserChallengeHistory = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("challengeBattles"),
+      _creationTime: v.number(),
+      gameId: v.string(),
+      challengerUserId: v.id("users"),
+      opponentUserId: v.optional(v.id("users")),
+      challengerName: v.string(),
+      opponentName: v.optional(v.string()),
+      status: v.union(
+        v.literal("waiting_for_opponent"),
+        v.literal("ready_to_start"),
+        v.literal("challenger_ready"),
+        v.literal("opponent_ready"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+      ),
+      currentWordIndex: v.number(),
+      challengerScore: v.number(),
+      opponentScore: v.number(),
+      winner: v.optional(v.string()),
+      startedAt: v.optional(v.number()),
+      completedAt: v.optional(v.number()),
+      currentRoundStartTime: v.optional(v.number()),
+      maxWords: v.number(),
+      isHidden: v.optional(v.boolean()),
+      isDeleted: v.optional(v.boolean()),
+      adminAction: v.optional(v.string()),
+      adminActionAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required for challenge history");
+    }
+
+    // For queries, we need to find existing user, not create
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!existingUser) {
+      throw new Error("User not found");
+    }
+
+    const userId = existingUser._id;
+
+    const challenges = await ctx.db
+      .query("challengeBattles")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("challengerUserId"), userId),
+          q.eq(q.field("opponentUserId"), userId),
+        ),
+      )
+      .order("desc")
+      .take(25);
+
+    return challenges;
+  },
+});
+
+// Get paginated user challenge history (for My Scores page)
+export const getUserChallengeHistoryPaginated = query({
+  args: {
+    cursor: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    challenges: v.array(
+      v.object({
+        _id: v.id("challengeBattles"),
+        _creationTime: v.number(),
+        gameId: v.string(),
+        challengerUserId: v.id("users"),
+        opponentUserId: v.optional(v.id("users")),
+        challengerName: v.string(),
+        opponentName: v.optional(v.string()),
+        status: v.union(
+          v.literal("waiting_for_opponent"),
+          v.literal("ready_to_start"),
+          v.literal("challenger_ready"),
+          v.literal("opponent_ready"),
+          v.literal("in_progress"),
+          v.literal("completed"),
+        ),
+        currentWordIndex: v.number(),
+        challengerScore: v.number(),
+        opponentScore: v.number(),
+        winner: v.optional(v.string()),
+        startedAt: v.optional(v.number()),
+        completedAt: v.optional(v.number()),
+        currentRoundStartTime: v.optional(v.number()),
+        maxWords: v.number(),
+        isHidden: v.optional(v.boolean()),
+        isDeleted: v.optional(v.boolean()),
+        adminAction: v.optional(v.string()),
+        adminActionAt: v.optional(v.number()),
+      }),
+    ),
+    hasMore: v.boolean(),
+    nextCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      // Return empty results for unauthenticated users
+      return {
+        challenges: [],
+        hasMore: false,
+        nextCursor: undefined,
+      };
+    }
+
+    // For queries, we need to find existing user, not create
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!existingUser) {
+      // Return empty results for users not yet in database
+      return {
+        challenges: [],
+        hasMore: false,
+        nextCursor: undefined,
+      };
+    }
+
+    const userId = existingUser._id;
+    const limit = args.limit || 3;
+
+    let query = ctx.db
+      .query("challengeBattles")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("challengerUserId"), userId),
+          q.eq(q.field("opponentUserId"), userId),
+        ),
+      )
+      .order("desc");
+
+    // Apply cursor if provided
+    if (args.cursor) {
+      const cursorTime = parseInt(args.cursor);
+      query = query.filter((q) => q.lt(q.field("_creationTime"), cursorTime));
+    }
+
+    const challenges = await query.take(limit + 1);
+    const hasMore = challenges.length > limit;
+    const returnChallenges = hasMore ? challenges.slice(0, limit) : challenges;
+
+    const nextCursor =
+      hasMore && returnChallenges.length > 0
+        ? returnChallenges[returnChallenges.length - 1]._creationTime.toString()
+        : undefined;
+
+    return {
+      challenges: returnChallenges,
+      hasMore,
+      nextCursor,
+    };
+  },
+});
+
+// Delete a user's challenge battle (only if they are a participant)
+export const deleteChallengeResult = mutation({
+  args: {
+    challengeId: v.id("challengeBattles"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAuth(ctx); // Require authentication
+
+    // For mutations, we can use the mutation helper
+    const userId = await getCurrentUserIdForMutation(ctx);
+
+    // Get the challenge to verify ownership
+    const challenge = await ctx.db.get(args.challengeId);
+    if (!challenge) {
+      throw new Error("Challenge not found");
+    }
+
+    // Verify the user is a participant in this challenge
+    if (
+      challenge.challengerUserId !== userId &&
+      challenge.opponentUserId !== userId
+    ) {
+      throw new Error("You can only delete challenges you participated in");
+    }
+
+    // Delete related challenge word attempts first
+    const wordAttempts = await ctx.db
+      .query("challengeWordAttempts")
+      .withIndex("by_battle_and_word", (q) =>
+        q.eq("battleId", args.challengeId),
+      )
+      .collect();
+
+    for (const attempt of wordAttempts) {
+      await ctx.db.delete(attempt._id);
+    }
+
+    // Delete challenge invites
+    const invites = await ctx.db
+      .query("challengeInvites")
+      .withIndex("by_battle", (q) => q.eq("battleId", args.challengeId))
+      .collect();
+
+    for (const invite of invites) {
+      await ctx.db.delete(invite._id);
+    }
+
+    // Delete the challenge battle
+    await ctx.db.delete(args.challengeId);
+
+    return null;
+  },
+});
+
+// Get public challenge score for sharing
+export const getPublicChallengeScore = query({
+  args: {
+    challengeId: v.id("challengeBattles"),
+  },
+  returns: v.union(
+    v.object({
+      challengerName: v.string(),
+      opponentName: v.string(),
+      challengerScore: v.number(),
+      opponentScore: v.number(),
+      winner: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+      maxWords: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const challenge = await ctx.db.get(args.challengeId);
+
+    if (!challenge || challenge.status !== "completed") {
+      return null;
+    }
+
+    return {
+      challengerName: challenge.challengerName,
+      opponentName: challenge.opponentName || "Opponent",
+      challengerScore: challenge.challengerScore,
+      opponentScore: challenge.opponentScore,
+      winner: challenge.winner,
+      completedAt: challenge.completedAt,
+      maxWords: challenge.maxWords,
     };
   },
 });

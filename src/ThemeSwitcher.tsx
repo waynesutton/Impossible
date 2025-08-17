@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Palette, FileText, Moon } from "lucide-react";
+import { Palette, FileText, Moon, LineSquiggle } from "lucide-react";
 
-type Theme = "neobrutalism" | "original" | "dark";
+type Theme = "neobrutalism" | "ghibli" | "original" | "dark";
 
 export function ThemeSwitcher() {
   const [currentTheme, setCurrentTheme] = useState<Theme>("neobrutalism");
@@ -11,7 +11,7 @@ export function ThemeSwitcher() {
     const savedTheme = localStorage.getItem("impossible-theme") as Theme;
     if (
       savedTheme &&
-      ["neobrutalism", "original", "dark"].includes(savedTheme)
+      ["neobrutalism", "ghibli", "original", "dark"].includes(savedTheme)
     ) {
       setCurrentTheme(savedTheme);
       applyTheme(savedTheme);
@@ -28,7 +28,9 @@ export function ThemeSwitcher() {
     root.removeAttribute("data-theme");
 
     // Apply new theme
-    if (theme === "original") {
+    if (theme === "ghibli") {
+      root.setAttribute("data-theme", "ghibli");
+    } else if (theme === "original") {
       root.setAttribute("data-theme", "original");
     } else if (theme === "dark") {
       root.setAttribute("data-theme", "dark");
@@ -40,7 +42,7 @@ export function ThemeSwitcher() {
   };
 
   const handleThemeToggle = () => {
-    const themes: Theme[] = ["neobrutalism", "original", "dark"];
+    const themes: Theme[] = ["neobrutalism", "ghibli", "original", "dark"];
     const currentIndex = themes.indexOf(currentTheme);
     const nextIndex = (currentIndex + 1) % themes.length;
     const nextTheme = themes[nextIndex];
@@ -53,6 +55,8 @@ export function ThemeSwitcher() {
     switch (currentTheme) {
       case "neobrutalism":
         return Palette;
+      case "ghibli":
+        return LineSquiggle;
       case "original":
         return FileText;
       case "dark":
@@ -66,6 +70,8 @@ export function ThemeSwitcher() {
     switch (currentTheme) {
       case "neobrutalism":
         return "Brutal";
+      case "ghibli":
+        return "Ghibli";
       case "original":
         return "Clean";
       case "dark":

@@ -6,7 +6,10 @@ const applicationTables = {
     name: v.optional(v.string()),
     email: v.optional(v.string()),
     isAnonymous: v.optional(v.boolean()),
-  }),
+    clerkId: v.optional(v.string()), // Link to Clerk user
+    role: v.optional(v.string()), // "admin" | "user"
+    profileDisplayName: v.optional(v.string()), // For profile page
+  }).index("by_clerk_id", ["clerkId"]),
   gameWords: defineTable({
     gameId: v.string(), // Unique game session ID
     word: v.string(),
@@ -43,9 +46,14 @@ const applicationTables = {
     playerName: v.optional(v.string()), // User's name or email
     isAnonymous: v.boolean(),
     usedSecretWord: v.optional(v.boolean()), // Whether they used the secret word to win
+    isHidden: v.optional(v.boolean()), // Admin can hide from leaderboard
+    isDeleted: v.optional(v.boolean()), // Admin can soft delete
+    adminAction: v.optional(v.string()), // Track which admin took action
+    adminActionAt: v.optional(v.number()), // When admin action was taken
   })
     .index("by_completed_and_time", ["completed", "completedAt"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_visibility", ["isHidden", "isDeleted"]),
 
   invites: defineTable({
     createdBy: v.id("users"),
@@ -108,10 +116,15 @@ const applicationTables = {
     completedAt: v.optional(v.number()),
     currentRoundStartTime: v.optional(v.number()), // For 60-second timer
     maxWords: v.number(), // Always 3 words for challenge mode
+    isHidden: v.optional(v.boolean()), // Admin can hide from leaderboard
+    isDeleted: v.optional(v.boolean()), // Admin can soft delete
+    adminAction: v.optional(v.string()), // Track which admin took action
+    adminActionAt: v.optional(v.number()), // When admin action was taken
   })
     .index("by_game_id", ["gameId"])
     .index("by_status", ["status"])
-    .index("by_completion", ["completedAt"]),
+    .index("by_completion", ["completedAt"])
+    .index("by_visibility", ["isHidden", "isDeleted"]),
 
   challengeWordAttempts: defineTable({
     battleId: v.id("challengeBattles"),
@@ -154,6 +167,4 @@ const applicationTables = {
   }).index("by_challenge", ["originalChallengeId"]),
 };
 
-export default defineSchema({
-  ...applicationTables,
-});
+export default defineSchema(applicationTables);

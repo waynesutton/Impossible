@@ -76,35 +76,76 @@
   --font-mono: ui-monospace, monospace;
 }
 
-[data-theme="dark"] {
-  /* Dark Mode Theme */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-accent: #3b82f6;
-  --bg-surface: #334155;
-  --bg-warning: #f59e0b;
-  --bg-success: #10b981;
-  --bg-error: #ef4444;
-  --bg-info: #1e40af;
+[data-theme="ghibli"] {
+  /* Studio Ghibli Inspired Flat Clean Theme */
+  --bg-primary: #e8f4f8;
+  --bg-secondary: #ffffff;
+  --bg-accent: #5a9bd4;
+  --bg-surface: #ffffff;
+  --bg-warning: #f8b84e;
+  --bg-success: #7cb342;
+  --bg-error: #e57373;
+  --bg-info: #64b5f6;
 
   /* Team Battle Colors */
-  --team-a-color: #10b981;
-  --team-b-color: #f59e0b;
-  --vs-accent: #3b82f6;
+  --team-a-color: #7cb342;
+  --team-b-color: #f8b84e;
+  --vs-accent: #5a9bd4;
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
+  --text-primary: #263238;
+  --text-secondary: #607d8b;
   --text-accent: #ffffff;
-  --text-inverse: #0f172a;
-  --text-info: #60a5fa;
+  --text-inverse: #ffffff;
+  --text-error: #ffffff;
+  --text-warning: #ffffff;
+  --text-success: #ffffff;
+  --text-info: #ffffff;
 
-  --border-color: #475569;
-  --border-width: 2px;
-  --border-radius: 8px;
+  --border-color: #b0bec5;
+  --border-width: 1px;
+  --border-radius: 12px;
 
-  --shadow-brutal: 0 4px 6px -1px rgb(0 0 0 / 0.3);
-  --shadow-small: 0 2px 4px -1px rgb(0 0 0 / 0.2);
-  --shadow-large: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+  --shadow-brutal: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-small: 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-large: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  --font-heading: "Inter", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "SF Mono", "Monaco", monospace;
+}
+
+[data-theme="dark"] {
+  /* Studio Ghibli Inspired Dark Mode Theme */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2a26;
+  --bg-accent: #cc5500;
+  --bg-surface: #3e5c2e;
+  --bg-warning: #f4a261;
+  --bg-success: #6b7c3a;
+  --bg-error: #b8441f;
+  --bg-info: #4a5d23;
+
+  /* Team Battle Colors */
+  --team-a-color: #6b7c3a;
+  --team-b-color: #f4a261;
+  --vs-accent: #cc5500;
+
+  --text-primary: #f5f0e8;
+  --text-secondary: #a39e99;
+  --text-accent: #f5f0e8;
+  --text-inverse: #1a1a1a;
+  --text-error: #f5f0e8;
+  --text-warning: #1a1a1a;
+  --text-success: #f5f0e8;
+  --text-info: #f5f0e8;
+
+  --border-color: #8b8680;
+  --border-width: 3px;
+  --border-radius: 6px;
+
+  --shadow-brutal: 0 6px 8px -2px rgb(0 0 0 / 0.4);
+  --shadow-small: 0 3px 4px -1px rgb(0 0 0 / 0.3);
+  --shadow-large: 0 20px 25px -5px rgb(0 0 0 / 0.5);
 
   --font-heading: "Inter", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
@@ -800,14 +841,6 @@ body {
   background: var(--bg-error);
 }
 
-.player-status {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  margin-top: 0.5rem;
-}
-
 .status-indicator {
   width: 12px;
   height: 12px;
@@ -927,6 +960,18 @@ body {
   .opponent-score .text-3xl {
     font-size: 1.75rem !important;
   }
+
+  /* Mobile optimization for player status "You" indicator */
+  .player-status {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .status-indicator {
+    width: 10px;
+    height: 10px;
+  }
 }
 
 /* Smaller challenge buttons */
@@ -942,6 +987,7 @@ body {
 .player-status {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   font-weight: 600;
   margin-top: 0.5rem;
@@ -978,4 +1024,296 @@ body {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* Ghibli Theme Specific Styles */
+[data-theme="ghibli"] .brutal-button {
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  color: var(--text-accent);
+}
+
+[data-theme="ghibli"] .brutal-button:hover {
+  background: var(--bg-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .brutal-card {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .brutal-input {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: inset var(--shadow-small);
+}
+
+[data-theme="ghibli"] .brutal-input:focus {
+  border-color: var(--bg-accent);
+  box-shadow:
+    inset var(--shadow-small),
+    0 0 0 2px rgba(90, 155, 212, 0.2);
+}
+
+[data-theme="ghibli"] .brutal-word-box {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .brutal-word-box.correct {
+  background: var(--bg-success);
+  border-color: var(--bg-success);
+  color: var(--text-success);
+}
+
+[data-theme="ghibli"] .brutal-word-box.incorrect {
+  background: var(--bg-error);
+  border-color: var(--bg-error);
+  color: var(--text-error);
+}
+
+[data-theme="ghibli"] .brutal-header {
+  background: var(--bg-secondary);
+  border-bottom: var(--border-width) solid var(--border-color);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .brutal-nav-button {
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--border-radius);
+  transition: all 0.2s ease;
+}
+
+[data-theme="ghibli"] .brutal-nav-button:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .brutal-nav-button.active {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-color: var(--bg-accent);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .challenge-timer {
+  background: var(--bg-error);
+  border: var(--border-width) solid var(--bg-error);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+  color: var(--text-error);
+}
+
+[data-theme="ghibli"] .challenger-vs-opponent {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .team-vs-badge {
+  background: var(--bg-warning);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  color: var(--text-warning);
+}
+
+/* Additional Ghibli components */
+[data-theme="ghibli"] .brutal-stats-card {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .brutal-badge {
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  color: var(--text-accent);
+}
+
+[data-theme="ghibli"] .mobile-menu {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-large);
+}
+
+[data-theme="ghibli"] .mobile-nav-button {
+  background: transparent;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--border-radius);
+  transition: all 0.2s ease;
+}
+
+[data-theme="ghibli"] .mobile-nav-button:hover,
+[data-theme="ghibli"] .mobile-nav-button.active {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  border-color: var(--bg-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .brutal-leaderboard-item {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .brutal-leaderboard-item:hover {
+  background: var(--bg-surface);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .last-chance-box {
+  background: var(--bg-warning);
+  border: var(--border-width) solid var(--bg-warning);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-large);
+  color: var(--text-warning);
+}
+
+/* Ghibli body background - clean flat style */
+[data-theme="ghibli"] body {
+  background: var(--bg-primary);
+}
+
+/* Ghibli Challenge Mode Specific Styles */
+[data-theme="ghibli"] .challenge-container {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-large);
+}
+
+[data-theme="ghibli"] .challenger-score,
+[data-theme="ghibli"] .opponent-score {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .vs-divider {
+  background: var(--vs-accent);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  color: var(--text-accent);
+}
+
+[data-theme="ghibli"] .player-status {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .status-indicator {
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .status-ready {
+  background: var(--bg-success);
+}
+
+[data-theme="ghibli"] .status-waiting {
+  background: var(--bg-warning);
+}
+
+[data-theme="ghibli"] .status-playing {
+  background: var(--bg-accent);
+}
+
+[data-theme="ghibli"] .challenge-button {
+  background: var(--bg-accent);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+  color: var(--text-accent);
+}
+
+[data-theme="ghibli"] .challenge-button:hover {
+  background: var(--bg-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .team-vs-timer {
+  background: var(--bg-info);
+  border: var(--border-width) solid var(--bg-info);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+  color: var(--text-info);
+}
+
+[data-theme="ghibli"] .team-vs-timer.warning {
+  background: var(--bg-warning);
+  border-color: var(--bg-warning);
+  color: var(--text-warning);
+}
+
+[data-theme="ghibli"] .team-vs-timer.critical {
+  background: var(--bg-error);
+  border-color: var(--bg-error);
+  color: var(--text-error);
+}
+
+[data-theme="ghibli"] .team-vs-word-display {
+  background: var(--bg-secondary);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .team-vs-suggestion-card {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
+}
+
+[data-theme="ghibli"] .team-vs-suggestion-card:hover {
+  background: var(--bg-surface);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+[data-theme="ghibli"] .team-vs-battle-header {
+  background: var(--bg-success);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-brutal);
+  color: var(--text-success);
+}
+
+[data-theme="ghibli"] .team-vs-progress-bar {
+  background: var(--bg-surface);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+[data-theme="ghibli"] .team-vs-progress-fill {
+  background: var(--team-a-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-small);
 }

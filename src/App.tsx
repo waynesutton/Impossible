@@ -1,6 +1,7 @@
 import { Toaster } from "sonner";
 import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
+import { useUser } from "@clerk/clerk-react";
 import { api } from "../convex/_generated/api";
 import { Leaderboard } from "./Leaderboard";
 import { ImpossibleGame } from "./ImpossibleGame";
@@ -9,6 +10,11 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 import { Dashboard } from "./Dashboard";
 import { ChallengeSetup } from "./ChallengeSetup";
 import { ChallengeMode } from "./ChallengeMode";
+import { AuthButton } from "./components/AuthButton";
+import { MyScores } from "./components/MyScores";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ShareableScoreHandler } from "./components/ShareableScoreHandler";
+import { SignInButton } from "@clerk/clerk-react";
 import { Id } from "../convex/_generated/dataModel";
 
 interface GameCompletionData {
@@ -26,6 +32,7 @@ export default function App() {
     | "playing"
     | "helper"
     | "dashboard"
+    | "my-scores"
     | "challenge"
     | "challenge-setup"
   >("game");
@@ -38,7 +45,17 @@ export default function App() {
   const [challengeCompletionData, setChallengeCompletionData] =
     useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [sharedGameScoreId, setSharedGameScoreId] =
+    useState<Id<"gameResults"> | null>(null);
+  const [sharedChallengeScoreId, setSharedChallengeScoreId] =
+    useState<Id<"challengeBattles"> | null>(null);
   const startNewGame = useMutation(api.game.startNewGame);
+
+  const { isAuthenticated } = useConvexAuth();
+  const { user, isSignedIn } = useUser();
+
+  // Use Clerk's authentication state as primary since we're using Clerk
+  const userIsAuthenticated = isSignedIn && user;
 
   // Challenge invite handling will be added here
 
@@ -47,6 +64,10 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get("invite");
     const challengeInvite = params.get("challenge");
+    const scoreShare = params.get("score");
+    const challengeScoreShare = params.get("challenge-score");
+    const highlightGame = params.get("highlight");
+    const highlightChallenge = params.get("highlight-challenge");
 
     if (invite) {
       setInviteId(invite as Id<"invites">);
@@ -54,6 +75,32 @@ export default function App() {
     } else if (challengeInvite) {
       setChallengeId(challengeInvite as Id<"challengeBattles">);
       setCurrentPage("challenge");
+    } else if (
+      scoreShare ||
+      challengeScoreShare ||
+      highlightGame ||
+      highlightChallenge
+    ) {
+      // Handle shared score URLs
+      if (scoreShare) {
+        setSharedGameScoreId(scoreShare as Id<"gameResults">);
+        setCurrentPage("game");
+      }
+      if (challengeScoreShare) {
+        setSharedChallengeScoreId(
+          challengeScoreShare as Id<"challengeBattles">,
+        );
+        setCurrentPage("game");
+      }
+      if (highlightGame || highlightChallenge) {
+        // For highlight URLs, go directly to leaderboard
+        setCurrentPage("leaderboard");
+      }
+    }
+
+    // Check for hash to navigate to leaderboard
+    if (window.location.hash === "#leaderboard") {
+      setCurrentPage("leaderboard");
     }
 
     // Check for dashboard route
@@ -110,6 +157,7 @@ export default function App() {
     try {
       await startNewGame();
       setGameCompletionData(null);
+      setChallengeCompletionData(null);
       setCurrentPage("playing");
     } catch (error) {
       console.error("Failed to start new game:", error);
@@ -123,6 +171,7 @@ export default function App() {
 
   const handleChallengeCancel = () => {
     setGameCompletionData(null);
+    setChallengeCompletionData(null);
     setCurrentPage("game");
   };
 
@@ -168,6 +217,7 @@ export default function App() {
               onClick={() => {
                 setCurrentPage("leaderboard");
                 setGameCompletionData(null); // Clear completion data when manually navigating to leaderboard
+                setChallengeCompletionData(null); // Clear challenge completion data
                 setChallengeId(null); // Clear challenge state
                 window.history.replaceState({}, "", window.location.pathname); // Clear URL params
               }}
@@ -177,8 +227,35 @@ export default function App() {
             >
               Leaderboard
             </button>
+
+            {/* Authenticated user navigation */}
+            {userIsAuthenticated && (
+              <button
+                onClick={() => setCurrentPage("my-scores")}
+                className={`brutal-nav-button ${
+                  currentPage === "my-scores" ? "active" : ""
+                }`}
+              >
+                My Scores
+              </button>
+            )}
+
+            {/* Admin navigation */}
+            {user?.publicMetadata?.role === "admin" && (
+              <button
+                onClick={() => setCurrentPage("dashboard")}
+                className={`brutal-nav-button ${
+                  currentPage === "dashboard" ? "active" : ""
+                }`}
+              >
+                Dashboard
+              </button>
+            )}
           </nav>
-          <ThemeSwitcher />
+          <div className="flex items-center gap-4">
+            <ThemeSwitcher />
+            <AuthButton />
+          </div>
         </div>
 
         {/* Mobile Hamburger Menu */}
@@ -220,6 +297,7 @@ export default function App() {
                 onClick={() => {
                   setCurrentPage("leaderboard");
                   setGameCompletionData(null);
+                  setChallengeCompletionData(null);
                   setIsMobileMenuOpen(false);
                 }}
                 className={`mobile-nav-button ${
@@ -228,7 +306,42 @@ export default function App() {
               >
                 Leaderboard
               </button>
+
+              {/* Authenticated user navigation in mobile */}
+              {userIsAuthenticated && (
+                <button
+                  onClick={() => {
+                    setCurrentPage("my-scores");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`mobile-nav-button ${
+                    currentPage === "my-scores" ? "active" : ""
+                  }`}
+                >
+                  My Scores
+                </button>
+              )}
+
+              {/* Admin navigation in mobile */}
+              {user?.publicMetadata?.role === "admin" && (
+                <button
+                  onClick={() => {
+                    setCurrentPage("dashboard");
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`mobile-nav-button ${
+                    currentPage === "dashboard" ? "active" : ""
+                  }`}
+                >
+                  Dashboard
+                </button>
+              )}
             </nav>
+
+            {/* Auth in Mobile Menu */}
+            <div className="mobile-theme-section">
+              <AuthButton />
+            </div>
 
             {/* Theme Switcher in Mobile Menu */}
             <div className="mobile-theme-section">
@@ -372,6 +485,30 @@ export default function App() {
                   </p>
                 </div>
               </div>
+
+              {/* Sign-up Banner for Anonymous Users */}
+              {!userIsAuthenticated && (
+                <div className="brutal-card text-center">
+                  <h3
+                    className="brutal-text-lg mb-4"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    Sign Up
+                  </h3>
+                  <p
+                    className="mb-4"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Sign up to see your scores and track your progress across
+                    both single-player and challenge modes!
+                  </p>
+                  <SignInButton mode="modal">
+                    <button className="brutal-button px-6 py-3">
+                      Sign Up Now
+                    </button>
+                  </SignInButton>
+                </div>
+              )}
             </div>
           ) : currentPage === "playing" ? (
             <ImpossibleGame onGameComplete={handleGameComplete} />
@@ -388,8 +525,12 @@ export default function App() {
               onBackToHome={handleBackToHome}
               onNavigateToLeaderboard={handleChallengeComplete}
             />
+          ) : currentPage === "my-scores" ? (
+            <MyScores />
           ) : currentPage === "dashboard" ? (
-            <Dashboard />
+            <ProtectedRoute requireAdmin={true}>
+              <Dashboard />
+            </ProtectedRoute>
           ) : (
             <Leaderboard
               gameCompletionData={gameCompletionData}
@@ -414,8 +555,48 @@ export default function App() {
               Convex
             </a>
           </p>
+          <div
+            className="mt-2 text-xs space-x-3"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <a
+              href="https://www.convex.dev/legal/privacy/v2024-09-24"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Privacy Policy
+            </a>
+            <span> </span>
+            <a
+              href="https://www.convex.dev/legal/tos/v2022-03-02"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Terms of Service
+            </a>
+            <span> </span>
+            <a
+              href="https://github.com/waynesutton/Impossible"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Open Source
+            </a>
+          </div>
         </div>
       </footer>
+
+      {/* Handle shared score meta tags */}
+      <ShareableScoreHandler
+        gameScoreId={sharedGameScoreId || undefined}
+        challengeScoreId={sharedChallengeScoreId || undefined}
+      />
 
       <Toaster />
     </div>

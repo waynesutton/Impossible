@@ -7,20 +7,25 @@ import {
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import {
+  requireAuth,
+  getCurrentUserIdForMutation,
+  getCurrentUserIdForQuery,
+  getOrCreateUser,
+} from "./auth/helpers";
 
 // Create a dummy user for demo purposes since we removed auth
 async function getLoggedInUser(ctx: any) {
-  // Check if a demo user exists, if not create one
-  let user = await ctx.db.query("users").first();
-  if (!user) {
-    const userId = await ctx.db.insert("users", {
-      name: "Player",
-      email: "demo@example.com",
-      isAnonymous: false,
-    });
+  // Check if this is a mutation context
+  if ("insert" in ctx.db) {
+    return await getCurrentUserIdForMutation(ctx);
+  } else {
+    const userId = await getCurrentUserIdForQuery(ctx);
+    if (!userId) {
+      throw new Error("No user found for anonymous gameplay");
+    }
     return userId;
   }
-  return user._id;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -175,9 +180,15 @@ export const submitGuess = mutation({
 
     const currentAttempts = userAttempt.attempts || 0;
 
-    // Don't allow submission if already completed
+    // Don't allow submission if already completed - return gracefully instead of throwing
     if (userAttempt.completed) {
-      throw new Error("Game already completed");
+      return {
+        correct:
+          userAttempt.currentGuess?.toLowerCase() ===
+          gameWord.word.toLowerCase(),
+        attemptsRemaining: 0,
+        word: gameWord.word,
+      };
     }
 
     // Don't allow submission if max attempts reached (before processing this attempt)
@@ -374,6 +385,11 @@ export const updateDisplayName = mutation({
   handler: async (ctx, args) => {
     const userId = await getLoggedInUser(ctx);
 
+    // Get the user to check if they're authenticated
+    const user = await ctx.db.get(userId);
+    const isAnonymous =
+      user && "isAnonymous" in user ? user.isAnonymous || false : false;
+
     const userAttempt = await ctx.db
       .query("userAttempts")
       .filter((q) => q.eq(q.field("userId"), userId))
@@ -399,9 +415,18 @@ export const updateDisplayName = mutation({
           .first();
 
         if (gameResult) {
-          await ctx.db.patch(gameResult._id, {
+          // For authenticated users, update both displayName and playerName
+          // so that the leaderboard shows the updated name immediately
+          const updateFields: any = {
             displayName: args.displayName,
-          });
+          };
+
+          if (!isAnonymous) {
+            // For authenticated users, also update playerName to match
+            updateFields.playerName = args.displayName;
+          }
+
+          await ctx.db.patch(gameResult._id, updateFields);
         }
       }
     }
@@ -836,6 +861,210 @@ export const getMainPlayerGameState = query({
         mainUserAttempt.completed &&
         mainUserAttempt.currentGuess.toLowerCase() ===
           gameWord.word.toLowerCase(),
+    };
+  },
+});
+
+// Add new authenticated-only functions
+export const getUserGameHistory = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("gameResults"),
+      _creationTime: v.number(),
+      userId: v.id("users"),
+      gameId: v.string(),
+      word: v.string(),
+      completed: v.boolean(),
+      attempts: v.number(),
+      completedAt: v.number(),
+      displayName: v.optional(v.string()),
+      playerName: v.optional(v.string()),
+      isAnonymous: v.boolean(),
+      usedSecretWord: v.optional(v.boolean()),
+      isHidden: v.optional(v.boolean()),
+      isDeleted: v.optional(v.boolean()),
+      adminAction: v.optional(v.string()),
+      adminActionAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx) => {
+    await requireAuth(ctx); // Require authentication
+
+    // For queries, we need to find existing user, not create
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Authentication required");
+    }
+
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!existingUser) {
+      throw new Error("User not found");
+    }
+
+    const userId = existingUser._id;
+
+    const userGames = await ctx.db
+      .query("gameResults")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(50);
+
+    return userGames;
+  },
+});
+
+// Get paginated user game history (for My Scores page)
+export const getUserGameHistoryPaginated = query({
+  args: {
+    cursor: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    games: v.array(
+      v.object({
+        _id: v.id("gameResults"),
+        _creationTime: v.number(),
+        userId: v.id("users"),
+        gameId: v.string(),
+        word: v.string(),
+        completed: v.boolean(),
+        attempts: v.number(),
+        completedAt: v.number(),
+        displayName: v.optional(v.string()),
+        playerName: v.optional(v.string()),
+        isAnonymous: v.boolean(),
+        usedSecretWord: v.optional(v.boolean()),
+        isHidden: v.optional(v.boolean()),
+        isDeleted: v.optional(v.boolean()),
+        adminAction: v.optional(v.string()),
+        adminActionAt: v.optional(v.number()),
+      }),
+    ),
+    hasMore: v.boolean(),
+    nextCursor: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    // Get identity without requiring auth first
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      // Return empty results for unauthenticated users
+      return {
+        games: [],
+        hasMore: false,
+        nextCursor: undefined,
+      };
+    }
+
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!existingUser) {
+      // Return empty results for users not yet in database
+      return {
+        games: [],
+        hasMore: false,
+        nextCursor: undefined,
+      };
+    }
+
+    const userId = existingUser._id;
+    const limit = args.limit || 3;
+
+    let query = ctx.db
+      .query("gameResults")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc");
+
+    // Apply cursor if provided
+    if (args.cursor) {
+      const cursorTime = parseInt(args.cursor);
+      query = query.filter((q) => q.lt(q.field("completedAt"), cursorTime));
+    }
+
+    const games = await query.take(limit + 1);
+    const hasMore = games.length > limit;
+    const returnGames = hasMore ? games.slice(0, limit) : games;
+
+    const nextCursor =
+      hasMore && returnGames.length > 0
+        ? returnGames[returnGames.length - 1].completedAt.toString()
+        : undefined;
+
+    return {
+      games: returnGames,
+      hasMore,
+      nextCursor,
+    };
+  },
+});
+
+// Delete a user's game result
+export const deleteGameResult = mutation({
+  args: {
+    gameResultId: v.id("gameResults"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAuth(ctx); // Require authentication
+
+    // For mutations, we can use the mutation helper
+    const userId = await getCurrentUserIdForMutation(ctx);
+
+    // Get the game result to verify ownership
+    const gameResult = await ctx.db.get(args.gameResultId);
+    if (!gameResult) {
+      throw new Error("Game result not found");
+    }
+
+    // Verify the user owns this game result
+    if (gameResult.userId !== userId) {
+      throw new Error("You can only delete your own scores");
+    }
+
+    // Delete the game result
+    await ctx.db.delete(args.gameResultId);
+
+    return null;
+  },
+});
+
+// Get public game score for sharing
+export const getPublicGameScore = query({
+  args: {
+    gameResultId: v.id("gameResults"),
+  },
+  returns: v.union(
+    v.object({
+      word: v.string(),
+      completed: v.boolean(),
+      attempts: v.number(),
+      completedAt: v.number(),
+      playerName: v.optional(v.string()),
+      usedSecretWord: v.optional(v.boolean()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const gameResult = await ctx.db.get(args.gameResultId);
+
+    if (!gameResult) {
+      return null;
+    }
+
+    return {
+      word: gameResult.word,
+      completed: gameResult.completed,
+      attempts: gameResult.attempts,
+      completedAt: gameResult.completedAt,
+      playerName: gameResult.playerName || gameResult.displayName,
+      usedSecretWord: gameResult.usedSecretWord,
     };
   },
 });

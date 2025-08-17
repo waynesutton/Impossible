@@ -11,6 +11,8 @@
     "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.42.1",
+    "@clerk/themes": "^2.4.10",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",

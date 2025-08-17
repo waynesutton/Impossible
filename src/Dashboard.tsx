@@ -1,8 +1,18 @@
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
+import { useUser } from "@clerk/clerk-react";
 import { api } from "../convex/_generated/api";
 
 export function Dashboard() {
-  const analytics = useQuery(api.leaderboard.getDashboardAnalytics);
+  const { isLoading: authIsLoading, isAuthenticated } = useConvexAuth();
+  const { user, isSignedIn } = useUser();
+
+  // Use Clerk's authentication state as primary
+  const userIsAuthenticated = isSignedIn && user;
+
+  const analytics = useQuery(
+    api.leaderboard.getDashboardAnalytics,
+    authIsLoading || !userIsAuthenticated ? "skip" : {},
+  );
 
   if (!analytics) {
     return (
@@ -79,6 +89,101 @@ export function Dashboard() {
           </div>
           <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
             Unique Sessions
+          </div>
+        </div>
+      </div>
+
+      {/* Admin Moderation Stats */}
+      <div className="brutal-card">
+        <h2
+          className="brutal-text-lg mb-6"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Total Moderation Statistics
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.adminModeration.totalHidden.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Total Hidden Items
+            </div>
+          </div>
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {analytics.adminModeration.totalDeleted.toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Total Deleted Items
+            </div>
+          </div>
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {(
+                analytics.playerDeletions.deletedGames +
+                analytics.playerDeletions.deletedChallenges
+              ).toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Player Self-Deletions
+            </div>
+          </div>
+          <div className="brutal-stats-card">
+            <div
+              className="brutal-text-lg"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {(
+                analytics.adminModeration.hiddenGames +
+                analytics.adminModeration.deletedGames +
+                analytics.adminModeration.hiddenChallenges +
+                analytics.adminModeration.deletedChallenges
+              ).toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Admin Moderation Actions
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div className="text-center">
+            <div
+              className="brutal-text-xl mb-2"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {(
+                analytics.adminModeration.totalHidden +
+                analytics.adminModeration.totalDeleted
+              ).toLocaleString()}
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Total Items Moderated (All Sources)
+            </div>
+          </div>
+          <div className="text-center">
+            <div
+              className="brutal-text-xl mb-2"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {(
+                (analytics.adminModeration.totalHidden + analytics.adminModeration.totalDeleted) /
+                (analytics.totalGamesPlayed + analytics.challengeMode.totalChallengeBattles) * 100
+              ).toFixed(1)}%
+            </div>
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Moderation Rate
+            </div>
           </div>
         </div>
       </div>
@@ -405,6 +510,125 @@ export function Dashboard() {
               >
                 {analytics.friendSuggestions.toLocaleString()}
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Player Deletions & Admin Moderation Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          <div>
+            <h3 className="brutal-text-md mb-4" style={{ color: "var(--text-primary)" }}>
+              Player Deletions
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Single-Player Games Deleted
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {analytics.playerDeletions.deletedGames.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Challenge Battles Deleted
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {analytics.playerDeletions.deletedChallenges.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-300">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  <strong>Total Player Deletions</strong>
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  <strong>
+                    {(
+                      analytics.playerDeletions.deletedGames +
+                      analytics.playerDeletions.deletedChallenges
+                    ).toLocaleString()}
+                  </strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="brutal-text-md mb-4" style={{ color: "var(--text-primary)" }}>
+              Admin Moderation Actions
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Games Hidden by Admin
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {analytics.adminModeration.hiddenGames.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Games Deleted by Admin
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {analytics.adminModeration.deletedGames.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Challenges Hidden by Admin
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {analytics.adminModeration.hiddenChallenges.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Challenges Deleted by Admin
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {analytics.adminModeration.deletedChallenges.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-gray-300">
+                <span style={{ color: "var(--text-secondary)" }}>
+                  <strong>Total Admin Actions</strong>
+                </span>
+                <span
+                  className="brutal-text-md"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  <strong>
+                    {(
+                      analytics.adminModeration.hiddenGames +
+                      analytics.adminModeration.deletedGames +
+                      analytics.adminModeration.hiddenChallenges +
+                      analytics.adminModeration.deletedChallenges
+                    ).toLocaleString()}
+                  </strong>
+                </span>
+              </div>
             </div>
           </div>
         </div>

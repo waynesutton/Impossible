@@ -102,7 +102,7 @@ export function HelperGame({ inviteId }: HelperGameProps) {
     return (
       <div className="brutal-card text-center">
         <div className="brutal-text-xl" style={{ color: "var(--bg-error)" }}>
-          Invalid Invite
+          Loading...
         </div>
         <p
           className="brutal-text-md mt-4"

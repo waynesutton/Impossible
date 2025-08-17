@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
+import { useUser } from "@clerk/clerk-react";
 import { api } from "../convex/_generated/api";
+import { Id } from "../convex/_generated/dataModel";
 
 interface GameCompletionData {
   won: boolean;
@@ -32,14 +34,30 @@ export function Leaderboard({
   challengeCompletionData,
   onStartNewGame,
 }: LeaderboardProps) {
+  const { isLoading: authIsLoading, isAuthenticated } = useConvexAuth();
+  const { user } = useUser();
   const leaderboard = useQuery(api.leaderboard.getLeaderboard);
-  const userStats = useQuery(api.leaderboard.getUserStats);
+  const userStats = useQuery(
+    api.leaderboard.getUserStats,
+    authIsLoading || !isAuthenticated ? "skip" : {},
+  );
   const challengeBattles = useQuery(
     api.challengeBattle.getRecentChallengeBattles,
     { limit: 3 },
   );
   const challengeStats = useQuery(api.challengeBattle.getChallengeBattleStats);
   const updateDisplayName = useMutation(api.game.updateDisplayName);
+
+  // Admin mutations
+  const adminHideGame = useMutation(api.leaderboard.adminHideGame);
+  const adminDeleteGame = useMutation(api.leaderboard.adminDeleteGame);
+  const adminHideChallenge = useMutation(api.leaderboard.adminHideChallenge);
+  const adminDeleteChallenge = useMutation(
+    api.leaderboard.adminDeleteChallenge,
+  );
+
+  // Check if user is admin
+  const isAdmin = user?.publicMetadata?.role === "admin";
 
   const [showNameEntry, setShowNameEntry] = useState(
     !!gameCompletionData && !challengeCompletionData,
@@ -78,9 +96,9 @@ export function Leaderboard({
     limit: 10,
   });
 
-  // Load initial challenge battles (5)
+  // Load initial challenge battles and update when data changes
   useEffect(() => {
-    if (challengeBattles?.battles && allChallengeBattles.length === 0) {
+    if (challengeBattles?.battles) {
       setAllChallengeBattles(challengeBattles.battles);
       if (!challengeBattles.isDone) {
         setChallengeCursor(challengeBattles.continueCursor);
@@ -174,6 +192,51 @@ export function Leaderboard({
   const handleSkipNameEntry = async () => {
     await updateDisplayName({ displayName: "Anonymous" });
     setShowNameEntry(false);
+  };
+
+  // Admin action handlers
+  const handleHideGame = async (gameId: string) => {
+    if (!isAdmin) return;
+    try {
+      await adminHideGame({ gameId: gameId as Id<"gameResults"> });
+      // The queries will automatically refresh due to Convex reactivity
+    } catch (error) {
+      console.error("Failed to hide game:", error);
+    }
+  };
+
+  const handleDeleteGame = async (gameId: string) => {
+    if (!isAdmin) return;
+    try {
+      await adminDeleteGame({ gameId: gameId as Id<"gameResults"> });
+      // The queries will automatically refresh due to Convex reactivity
+    } catch (error) {
+      console.error("Failed to delete game:", error);
+    }
+  };
+
+  const handleHideChallenge = async (challengeId: string) => {
+    if (!isAdmin) return;
+    try {
+      await adminHideChallenge({
+        challengeId: challengeId as Id<"challengeBattles">,
+      });
+      // The queries will automatically refresh due to Convex reactivity
+    } catch (error) {
+      console.error("Failed to hide challenge:", error);
+    }
+  };
+
+  const handleDeleteChallenge = async (challengeId: string) => {
+    if (!isAdmin) return;
+    try {
+      await adminDeleteChallenge({
+        challengeId: challengeId as Id<"challengeBattles">,
+      });
+      // The queries will automatically refresh due to Convex reactivity
+    } catch (error) {
+      console.error("Failed to delete challenge:", error);
+    }
   };
 
   if (!leaderboard) {
@@ -465,7 +528,7 @@ export function Leaderboard({
                   className="brutal-text-lg"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {userStats.completedGames}
+                  {userStats.wins}
                 </div>
                 <div
                   className="brutal-text-md"
@@ -493,7 +556,7 @@ export function Leaderboard({
                   className="brutal-text-lg"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  {userStats.successRate}%
+                  {userStats.winRate}%
                 </div>
                 <div
                   className="brutal-text-md"
@@ -503,12 +566,9 @@ export function Leaderboard({
                 </div>
               </div>
             </div>
-            {userStats.bestAttempts && (
-              <div className="brutal-badge">
-                Best: {userStats.bestAttempts} attempt
-                {userStats.bestAttempts === 1 ? "" : "s"}
-              </div>
-            )}
+            <div className="brutal-badge">
+              Average: {userStats.averageAttempts} attempts
+            </div>
           </div>
         </div>
       )}
@@ -607,11 +667,43 @@ export function Leaderboard({
                               </div>
                             </div>
                           </div>
-                          <div
-                            className="text-xs"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {formatTime(game.completedAt)}
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="text-xs"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              {formatTime(game.completedAt)}
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleHideGame(game._id)}
+                                  className="brutal-button text-xs px-2 py-1"
+                                  style={{
+                                    background: "var(--bg-warning)",
+                                    color: "var(--text-warning)",
+                                    border: "1px solid var(--border-warning)",
+                                    fontSize: "10px",
+                                  }}
+                                  title="Hide from leaderboard"
+                                >
+                                  Hide
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteGame(game._id)}
+                                  className="brutal-button text-xs px-2 py-1"
+                                  style={{
+                                    background: "var(--bg-error)",
+                                    color: "var(--text-inverse)",
+                                    border: "1px solid var(--border-error)",
+                                    fontSize: "10px",
+                                  }}
+                                  title="Delete permanently"
+                                >
+                                  Del
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -696,11 +788,44 @@ export function Leaderboard({
                     </div>
                   </div>
                 </div>
-                <div
-                  className="text-xs"
-                  style={{ color: "var(--text-inverse)", opacity: 0.8 }}
-                >
-                  {formatTime(game.completedAt)}
+                <div className="flex items-center gap-2">
+                  <div
+                    className="text-xs"
+                    style={{ color: "var(--text-inverse)", opacity: 0.8 }}
+                  >
+                    {formatTime(game.completedAt)}
+                  </div>
+                  {/* Admin buttons temporarily commented out for debugging */}
+                  {/* {isAdmin && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleHideGame(game._id)}
+                        className="brutal-button text-xs px-2 py-1"
+                        style={{
+                          background: "var(--bg-warning)",
+                          color: "var(--text-warning)",
+                          border: "1px solid var(--border-warning)",
+                          fontSize: "10px",
+                        }}
+                        title="Hide from leaderboard"
+                      >
+                        Hide
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGame(game._id)}
+                        className="brutal-button text-xs px-2 py-1"
+                        style={{
+                          background: "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                          border: "1px solid var(--border-color)",
+                          fontSize: "10px",
+                        }}
+                        title="Delete permanently"
+                      >
+                        Del
+                      </button>
+                    </div>
+                  )} */}
                 </div>
               </div>
             ))}
@@ -764,11 +889,44 @@ export function Leaderboard({
                     {game.attempts} attempts
                   </span>
                 </div>
-                <div
-                  className="text-xs"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {formatTime(game.completedAt)}
+                <div className="flex items-center gap-2">
+                  <div
+                    className="text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {formatTime(game.completedAt)}
+                  </div>
+                  {/* Admin buttons temporarily commented out for debugging */}
+                  {/* {isAdmin && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleHideGame(game._id)}
+                        className="brutal-button text-xs px-2 py-1"
+                        style={{
+                          background: "var(--bg-warning)",
+                          color: "var(--text-warning)",
+                          border: "1px solid var(--border-warning)",
+                          fontSize: "10px",
+                        }}
+                        title="Hide from leaderboard"
+                      >
+                        Hide
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGame(game._id)}
+                        className="brutal-button text-xs px-2 py-1"
+                        style={{
+                          background: "var(--bg-error)",
+                          color: "var(--text-inverse)",
+                          border: "1px solid var(--border-error)",
+                          fontSize: "10px",
+                        }}
+                        title="Delete permanently"
+                      >
+                        Del
+                      </button>
+                    </div>
+                  )} */}
                 </div>
               </div>
             ))}
@@ -901,11 +1059,47 @@ export function Leaderboard({
                               </span>
                             )}
                           </div>
-                          <div
-                            className="text-xs"
-                            style={{ color: "var(--text-secondary)" }}
-                          >
-                            {formatTime(battle.completedAt)}
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="text-xs"
+                              style={{ color: "var(--text-secondary)" }}
+                            >
+                              {formatTime(battle.completedAt)}
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() =>
+                                    handleHideChallenge(battle._id)
+                                  }
+                                  className="brutal-button text-xs px-2 py-1"
+                                  style={{
+                                    background: "var(--bg-secondary)",
+                                    color: "var(--text-primary)",
+                                    border: "1px solid var(--border-color)",
+                                    fontSize: "10px",
+                                  }}
+                                  title="Hide from leaderboard"
+                                >
+                                  Hide
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleDeleteChallenge(battle._id)
+                                  }
+                                  className="brutal-button text-xs px-2 py-1"
+                                  style={{
+                                    background: "var(--bg-error)",
+                                    color: "var(--text-inverse)",
+                                    border: "1px solid var(--border-error)",
+                                    fontSize: "10px",
+                                  }}
+                                  title="Delete permanently"
+                                >
+                                  Del
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

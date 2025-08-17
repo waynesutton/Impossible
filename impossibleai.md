@@ -233,6 +233,221 @@ userAttempts: defineTable({
 
 The game includes a hidden secret word feature (implementation details not documented for security).
 
+## Game Difficulty Configuration
+
+### Regular Mode Difficulty Settings
+
+To modify difficulty for regular gameplay, update these key locations:
+
+#### Word Generation Difficulty (`convex/game.ts` lines 727-737)
+
+**Current Prompt (Line 732-734):**
+
+```typescript
+content: "Generate a single obscure English word, 5-8 letters, extremely difficult to guess. Respond with ONLY the word.";
+```
+
+**Difficulty Modifications:**
+
+**Easier Regular Mode:**
+
+```typescript
+content: "Generate a single common English word, 4-6 letters, moderately challenging but fair. Respond with ONLY the word.";
+```
+
+**Harder Regular Mode:**
+
+```typescript
+content: "Generate a single extremely obscure English word, 7-10 letters, archaic or highly technical, nearly impossible to guess. Respond with ONLY the word.";
+```
+
+**Medium Regular Mode:**
+
+```typescript
+content: "Generate a single uncommon English word, 5-7 letters, challenging but solvable with effort. Respond with ONLY the word.";
+```
+
+#### Word Length Requirements (Line 733)
+
+- **Easier**: Change "5-8 letters" to "4-6 letters"
+- **Harder**: Change "5-8 letters" to "7-10 letters"
+
+#### Temperature Setting (Line 736)
+
+- **More Predictable**: Change `temperature: 0.9` to `temperature: 0.5`
+- **More Random**: Change `temperature: 0.9` to `temperature: 1.2`
+
+#### Hint Generation Difficulty (`convex/game.ts` lines 343-347)
+
+**Current Prompt (Line 343):**
+
+```typescript
+const prompt = `Give a helpful but not too obvious hint for the word "${args.word}". The user has made ${args.attempts} attempts. Make the hint cryptic but fair. Respond with just the hint, nothing else.`;
+```
+
+**Easier Hints:**
+
+```typescript
+const prompt = `Give a clear and helpful hint for the word "${args.word}". The user has made ${args.attempts} attempts. Make the hint direct and informative. Respond with just the hint, nothing else.`;
+```
+
+**Harder Hints:**
+
+```typescript
+const prompt = `Give a very cryptic and subtle hint for the word "${args.word}". The user has made ${args.attempts} attempts. Make the hint extremely indirect and require deep thinking. Respond with just the hint, nothing else.`;
+```
+
+### Challenge Mode Difficulty Settings
+
+Challenge mode uses different AI generation for competitive play.
+
+#### Challenge Word Generation (`convex/challengeBattle.ts` lines 1272-1289)
+
+**Current System Prompt (Lines 1275-1277):**
+
+```typescript
+content: "Generate a single extremely challenging English word for a word-guessing game. The word should be 6-9 letters long, very uncommon and difficult to guess (approximately 1 in 10,000 chance of being guessed), but still a real English word that appears in dictionaries. Examples of difficulty: QUIXOTIC, EPHEMERAL, UBIQUITOUS, SERENDIPITY. Respond with only the word, no punctuation or explanation.";
+```
+
+**Easier Challenge Mode:**
+
+```typescript
+content: "Generate a single moderately challenging English word for a word-guessing game. The word should be 5-7 letters long, uncommon but fair to guess (approximately 1 in 1,000 chance of being guessed). Examples: MYSTIC, GOLDEN, FRIEND, BRIGHT. Respond with only the word, no punctuation or explanation.";
+```
+
+**Harder Challenge Mode:**
+
+```typescript
+content: "Generate a single extremely difficult English word for a word-guessing game. The word should be 8-12 letters long, extremely rare and technical (approximately 1 in 50,000 chance of being guessed). Examples: PERSPICACIOUS, SESQUIPEDALIAN, PUSILLANIMOUS. Respond with only the word, no punctuation or explanation.";
+```
+
+#### Challenge Length Requirements (Line 1277)
+
+- **Easier**: Change "6-9 letters long" to "5-7 letters long"
+- **Harder**: Change "6-9 letters long" to "8-12 letters long"
+
+#### Challenge Help Features (`convex/challengeBattle.ts` lines 325-333)
+
+**Current Simple Hints (Lines 327-328):**
+
+```typescript
+// Hint: show word length and first letter
+content = `This ${currentGameWord.word.length}-letter word starts with "${currentGameWord.word[0]}"`;
+```
+
+**Easier Challenge Hints:**
+
+```typescript
+// More revealing hint
+content = `This ${currentGameWord.word.length}-letter word starts with "${currentGameWord.word[0]}" and ends with "${currentGameWord.word[currentGameWord.word.length - 1]}"`;
+```
+
+**Harder Challenge Hints:**
+
+```typescript
+// More cryptic hint
+content = `This word has ${currentGameWord.word.length} letters and contains the letter "${currentGameWord.word[1]}"`;
+```
+
+**Current Simple Clues (Lines 330-332):**
+
+```typescript
+// Clue: show a letter position
+const middleIndex = Math.floor(currentGameWord.word.length / 2);
+content = `Letter ${middleIndex + 1} is "${currentGameWord.word[middleIndex]}"`;
+```
+
+**Easier Challenge Clues:**
+
+```typescript
+// Show multiple letters
+content = `Letters: ${currentGameWord.word[0]}_${currentGameWord.word[Math.floor(currentGameWord.word.length / 2)]}_${currentGameWord.word[currentGameWord.word.length - 1]}`;
+```
+
+### Scoring System Adjustments
+
+#### Challenge Mode Scoring (`convex/challengeBattle.ts` lines 447-466)
+
+**Current System (Lines 450-465):**
+
+```typescript
+score = 100; // Base points
+// Attempt bonus: 50 points for 1st attempt, 30 for 2nd, 10 for 3rd
+if (newAttempts === 1) {
+  score += 50;
+} else if (newAttempts === 2) {
+  score += 30;
+} else if (newAttempts === 3) {
+  score += 10;
+}
+```
+
+**Easier Scoring (More Forgiving):**
+
+```typescript
+score = 100; // Base points
+// More generous attempt bonus: 40 points for any attempt
+if (newAttempts <= 3) {
+  score += 40;
+}
+```
+
+**Harder Scoring (More Competitive):**
+
+```typescript
+score = 100; // Base points
+// Stricter attempt bonus: 80 for 1st only, 20 for 2nd, 0 for 3rd
+if (newAttempts === 1) {
+  score += 80;
+} else if (newAttempts === 2) {
+  score += 20;
+}
+// No bonus for 3rd attempt
+```
+
+### Timer Adjustments
+
+#### Challenge Timer Duration (`convex/challengeBattle.ts` lines 16-19)
+
+**Current System:**
+
+```typescript
+function getTimerDuration(wordIndex: number): number {
+  return wordIndex === 2 ? 30000 : 60000; // 30s for round 3, 60s for rounds 1&2
+}
+```
+
+**Easier Timing:**
+
+```typescript
+function getTimerDuration(wordIndex: number): number {
+  return wordIndex === 2 ? 45000 : 90000; // 45s for round 3, 90s for rounds 1&2
+}
+```
+
+**Harder Timing:**
+
+```typescript
+function getTimerDuration(wordIndex: number): number {
+  return wordIndex === 2 ? 20000 : 40000; // 20s for round 3, 40s for rounds 1&2
+}
+```
+
+### Quick Reference Summary
+
+**Files to Modify:**
+
+- `convex/game.ts` - Regular mode word generation (lines 732-734) and hints (line 343)
+- `convex/challengeBattle.ts` - Challenge mode generation (lines 1275-1277), timers (lines 16-19), and scoring (lines 450-465)
+
+**Common Changes:**
+
+- **Word Length**: Adjust letter count requirements in prompts
+- **Difficulty Language**: Change "obscure" to "common" or "archaic"
+- **Temperature**: Lower for consistency, higher for randomness
+- **Timers**: Increase/decrease millisecond values
+- **Scoring**: Modify point values and attempt bonuses
+
 ## Future AI Enhancement Opportunities
 
 ### Potential Improvements

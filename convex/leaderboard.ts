@@ -1,29 +1,39 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import {
+  requireAdminRole,
+  getCurrentUserIdForMutation,
+  getCurrentUserIdForQuery,
+} from "./auth/helpers";
 
 // Create a dummy user for demo purposes since we removed auth
 async function getLoggedInUser(ctx: any) {
-  // Check if a demo user exists, if not create one
-  let user = await ctx.db.query("users").first();
-  if (!user) {
-    const userId = await ctx.db.insert("users", {
-      name: "Player",
-      email: "demo@example.com",
-      isAnonymous: false,
-    });
+  // Check if this is a mutation context
+  if ("insert" in ctx.db) {
+    return await getCurrentUserIdForMutation(ctx);
+  } else {
+    const userId = await getCurrentUserIdForQuery(ctx);
+    if (!userId) {
+      throw new Error("No user found for anonymous gameplay");
+    }
     return userId;
   }
-  return user._id;
 }
 
 export const getLeaderboard = query({
   args: {},
   handler: async (ctx) => {
-    // Winners (completed = true)
+    // Winners (completed = true) - filter out hidden/deleted games
     const allCompletedGames = await ctx.db
       .query("gameResults")
       .withIndex("by_completed_and_time", (q) => q.eq("completed", true))
       .order("desc")
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("isHidden"), true),
+          q.neq(q.field("isDeleted"), true),
+        ),
+      )
       .take(50);
 
     // Separate legitimate winners from secret word users
@@ -32,15 +42,30 @@ export const getLeaderboard = query({
     );
     const shameGames = allCompletedGames.filter((game) => game.usedSecretWord);
 
-    // Recent plays (any games), newest first - only get 10 for initial load
+    // Recent plays (any games), newest first - only get 10 for initial load - filter out hidden/deleted
     const recentPlays = await ctx.db
       .query("gameResults")
       .order("desc")
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("isHidden"), true),
+          q.neq(q.field("isDeleted"), true),
+        ),
+      )
       .take(10);
 
-    // Global totals
+    // Global totals - filter out hidden/deleted
     const totalGames = (
-      await ctx.db.query("gameResults").order("desc").take(200)
+      await ctx.db
+        .query("gameResults")
+        .order("desc")
+        .filter((q) =>
+          q.and(
+            q.neq(q.field("isHidden"), true),
+            q.neq(q.field("isDeleted"), true),
+          ),
+        )
+        .take(200)
     ).length;
 
     return {
@@ -86,8 +111,16 @@ export const getRecentPlays = query({
   handler: async (ctx, args) => {
     const limit = args.limit || 10;
 
-    // Get games in descending order (newest first)
-    let query = ctx.db.query("gameResults").order("desc");
+    // Get games in descending order (newest first) - filter out hidden/deleted
+    let query = ctx.db
+      .query("gameResults")
+      .order("desc")
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("isHidden"), true),
+          q.neq(q.field("isDeleted"), true),
+        ),
+      );
 
     // If cursor is provided, start from that point
     if (args.cursor) {
@@ -112,34 +145,6 @@ export const getRecentPlays = query({
       games: returnGames,
       hasMore,
       nextCursor,
-    };
-  },
-});
-
-export const getUserStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getLoggedInUser(ctx);
-    if (!userId) return null;
-
-    const userGames = await ctx.db
-      .query("gameResults")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-
-    const completed = userGames.filter((g) => g.completed);
-
-    return {
-      totalGames: userGames.length,
-      completedGames: completed.length,
-      successRate:
-        userGames.length > 0
-          ? Math.round((completed.length / userGames.length) * 100)
-          : 0,
-      bestAttempts:
-        completed.length > 0
-          ? Math.min(...completed.map((g) => g.attempts))
-          : null,
     };
   },
 });
@@ -212,6 +217,20 @@ export const getDashboardAnalytics = query({
     cluesRequested: v.number(),
     invitesCreated: v.number(),
     friendSuggestions: v.number(),
+    // Player Deletion Stats
+    playerDeletions: v.object({
+      deletedGames: v.number(),
+      deletedChallenges: v.number(),
+    }),
+    // Admin Moderation Stats
+    adminModeration: v.object({
+      hiddenGames: v.number(),
+      deletedGames: v.number(),
+      hiddenChallenges: v.number(),
+      deletedChallenges: v.number(),
+      totalHidden: v.number(),
+      totalDeleted: v.number(),
+    }),
     // Challenge Mode Analytics
     challengeMode: v.object({
       challengesCreated: v.number(),
@@ -240,6 +259,177 @@ export const getDashboardAnalytics = query({
     ),
   }),
   handler: async (ctx) => {
+    // Check admin role gracefully
+    let identity;
+    try {
+      identity = await ctx.auth.getUserIdentity();
+    } catch (error) {
+      console.error("Error getting user identity:", error);
+      // Return empty analytics on auth error
+      return {
+        totalHomepageViews: 0,
+        totalGamesPlayed: 0,
+        totalSuccessfulGames: 0,
+        successRate: 0,
+        wordsConquered: 0,
+        secretWordUsage: 0,
+        attemptBreakdown: {
+          firstAttempt: 0,
+          secondAttempt: 0,
+          thirdAttempt: 0,
+        },
+        averageAttempts: 0,
+        uniqueSessions: 0,
+        namedGames: 0,
+        anonymousGames: 0,
+        hintsRequested: 0,
+        cluesRequested: 0,
+        invitesCreated: 0,
+        friendSuggestions: 0,
+        playerDeletions: {
+          deletedGames: 0,
+          deletedChallenges: 0,
+        },
+        adminModeration: {
+          hiddenGames: 0,
+          deletedGames: 0,
+          hiddenChallenges: 0,
+          deletedChallenges: 0,
+          totalHidden: 0,
+          totalDeleted: 0,
+        },
+        challengeMode: {
+          challengesCreated: 0,
+          challengesCompleted: 0,
+          totalChallengeBattles: 0,
+          challengeLinksClicked: 0,
+          averageChallengeScore: 0,
+          topChallengeScore: 0,
+          rematchRequests: 0,
+          round3Games: 0,
+          averageCompletionTime: 0,
+          tieGames: 0,
+        },
+        linkAnalytics: {
+          normalModeLinksClicked: 0,
+          challengeLinksShared: 0,
+        },
+        recentActivity: [],
+      };
+    }
+
+    if (!identity) {
+      // Return empty/default analytics for unauthenticated users
+      return {
+        totalHomepageViews: 0,
+        totalGamesPlayed: 0,
+        totalSuccessfulGames: 0,
+        successRate: 0,
+        wordsConquered: 0,
+        secretWordUsage: 0,
+        attemptBreakdown: {
+          firstAttempt: 0,
+          secondAttempt: 0,
+          thirdAttempt: 0,
+        },
+        averageAttempts: 0,
+        uniqueSessions: 0,
+        namedGames: 0,
+        anonymousGames: 0,
+        hintsRequested: 0,
+        cluesRequested: 0,
+        invitesCreated: 0,
+        friendSuggestions: 0,
+        playerDeletions: {
+          deletedGames: 0,
+          deletedChallenges: 0,
+        },
+        adminModeration: {
+          hiddenGames: 0,
+          deletedGames: 0,
+          hiddenChallenges: 0,
+          deletedChallenges: 0,
+          totalHidden: 0,
+          totalDeleted: 0,
+        },
+        challengeMode: {
+          challengesCreated: 0,
+          challengesCompleted: 0,
+          totalChallengeBattles: 0,
+          challengeLinksClicked: 0,
+          averageChallengeScore: 0,
+          topChallengeScore: 0,
+          rematchRequests: 0,
+          round3Games: 0,
+          averageCompletionTime: 0,
+          tieGames: 0,
+        },
+        linkAnalytics: {
+          normalModeLinksClicked: 0,
+          challengeLinksShared: 0,
+        },
+        recentActivity: [],
+      };
+    }
+
+    // Check admin role - try multiple possible locations for the role
+    const userRole = identity.role || (identity as any).publicMetadata?.role;
+    if (!userRole || userRole !== "admin") {
+      // Return empty analytics for non-admin users, but at least they're authenticated
+      return {
+        totalHomepageViews: 0,
+        totalGamesPlayed: 0,
+        totalSuccessfulGames: 0,
+        successRate: 0,
+        wordsConquered: 0,
+        secretWordUsage: 0,
+        attemptBreakdown: {
+          firstAttempt: 0,
+          secondAttempt: 0,
+          thirdAttempt: 0,
+        },
+        averageAttempts: 0,
+        uniqueSessions: 0,
+        namedGames: 0,
+        anonymousGames: 0,
+        hintsRequested: 0,
+        cluesRequested: 0,
+        invitesCreated: 0,
+        friendSuggestions: 0,
+        playerDeletions: {
+          deletedGames: 0,
+          deletedChallenges: 0,
+        },
+        adminModeration: {
+          hiddenGames: 0,
+          deletedGames: 0,
+          hiddenChallenges: 0,
+          deletedChallenges: 0,
+          totalHidden: 0,
+          totalDeleted: 0,
+        },
+        challengeMode: {
+          challengesCreated: 0,
+          challengesCompleted: 0,
+          totalChallengeBattles: 0,
+          challengeLinksClicked: 0,
+          averageChallengeScore: 0,
+          topChallengeScore: 0,
+          rematchRequests: 0,
+          round3Games: 0,
+          averageCompletionTime: 0,
+          tieGames: 0,
+        },
+        linkAnalytics: {
+          normalModeLinksClicked: 0,
+          challengeLinksShared: 0,
+        },
+        recentActivity: [],
+      };
+    }
+
+    // Continue with real analytics for admin users
+
     // Get all game results
     const allGames = await ctx.db.query("gameResults").collect();
     const successfulGames = allGames.filter(
@@ -403,6 +593,42 @@ export const getDashboardAnalytics = query({
       .map(([date, stats]) => ({ date, ...stats }))
       .sort((a, b) => b.date.localeCompare(a.date));
 
+    // Player deletion statistics
+    const playerDeletedGames = allGames.filter(
+      (game) => game.isDeleted === true && !game.adminAction,
+    ).length;
+    const playerDeletedChallenges = allChallengeBattles.filter(
+      (battle) => battle.isDeleted === true && !battle.adminAction,
+    ).length;
+
+    // Admin moderation statistics
+    const adminHiddenGames = allGames.filter(
+      (game) => game.isHidden === true && game.adminAction,
+    ).length;
+    const adminDeletedGames = allGames.filter(
+      (game) => game.isDeleted === true && game.adminAction,
+    ).length;
+    const adminHiddenChallenges = allChallengeBattles.filter(
+      (battle) => battle.isHidden === true && battle.adminAction,
+    ).length;
+    const adminDeletedChallenges = allChallengeBattles.filter(
+      (battle) => battle.isDeleted === true && battle.adminAction,
+    ).length;
+
+    // Total moderation (for backwards compatibility)
+    const hiddenGames = allGames.filter(
+      (game) => game.isHidden === true,
+    ).length;
+    const deletedGames = allGames.filter(
+      (game) => game.isDeleted === true,
+    ).length;
+    const hiddenChallenges = allChallengeBattles.filter(
+      (battle) => battle.isHidden === true,
+    ).length;
+    const deletedChallenges = allChallengeBattles.filter(
+      (battle) => battle.isDeleted === true,
+    ).length;
+
     return {
       totalHomepageViews: homepageViews.length,
       totalGamesPlayed: allGames.length,
@@ -422,6 +648,20 @@ export const getDashboardAnalytics = query({
       cluesRequested,
       invitesCreated: invites.length,
       friendSuggestions: suggestions.length,
+      // Player Deletion Stats
+      playerDeletions: {
+        deletedGames: playerDeletedGames,
+        deletedChallenges: playerDeletedChallenges,
+      },
+      // Admin Moderation Stats
+      adminModeration: {
+        hiddenGames: adminHiddenGames,
+        deletedGames: adminDeletedGames,
+        hiddenChallenges: adminHiddenChallenges,
+        deletedChallenges: adminDeletedChallenges,
+        totalHidden: hiddenGames,
+        totalDeleted: deletedGames,
+      },
       // Challenge Mode Analytics
       challengeMode: {
         challengesCreated: allChallengeBattles.length,
@@ -442,6 +682,186 @@ export const getDashboardAnalytics = query({
         challengeLinksShared: challengeInvites.length, // Total challenge invites created (shared)
       },
       recentActivity,
+    };
+  },
+});
+
+// User stats for authenticated users
+// Simple admin functions for moderation
+export const adminHideGame = mutation({
+  args: { gameId: v.id("gameResults") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await requireAdminRole(ctx);
+    await ctx.db.patch(args.gameId, {
+      isHidden: true,
+      adminAction: identity.email || "Admin",
+      adminActionAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const adminDeleteGame = mutation({
+  args: { gameId: v.id("gameResults") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await requireAdminRole(ctx);
+    await ctx.db.patch(args.gameId, {
+      isDeleted: true,
+      adminAction: identity.email || "Admin",
+      adminActionAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const adminHideChallenge = mutation({
+  args: { challengeId: v.id("challengeBattles") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await requireAdminRole(ctx);
+    await ctx.db.patch(args.challengeId, {
+      isHidden: true,
+      adminAction: identity.email || "Admin",
+      adminActionAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const adminDeleteChallenge = mutation({
+  args: { challengeId: v.id("challengeBattles") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await requireAdminRole(ctx);
+    await ctx.db.patch(args.challengeId, {
+      isDeleted: true,
+      adminAction: identity.email || "Admin",
+      adminActionAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const getUserStats = query({
+  args: {},
+  returns: v.object({
+    totalGames: v.number(),
+    wins: v.number(),
+    winRate: v.number(),
+    averageAttempts: v.number(),
+    challengeStats: v.optional(
+      v.object({
+        totalChallenges: v.number(),
+        challengesWon: v.number(),
+        challengeWinRate: v.number(),
+        averageScore: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      // Return default stats for unauthenticated users
+      return {
+        totalGames: 0,
+        wins: 0,
+        winRate: 0,
+        averageAttempts: 0,
+        challengeStats: undefined,
+      };
+    }
+
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!existingUser) {
+      // Return default stats for users not yet in database
+      return {
+        totalGames: 0,
+        wins: 0,
+        winRate: 0,
+        averageAttempts: 0,
+        challengeStats: undefined,
+      };
+    }
+
+    const userId = existingUser._id;
+
+    // Get user's single-player game results
+    const userGames = await ctx.db
+      .query("gameResults")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const totalGames = userGames.length;
+    const wins = userGames.filter(
+      (game) => game.completed && !game.usedSecretWord,
+    ).length;
+    const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0;
+    const averageAttempts =
+      totalGames > 0
+        ? Math.round(
+            (userGames.reduce((sum, game) => sum + game.attempts, 0) /
+              totalGames) *
+              10,
+          ) / 10
+        : 0;
+
+    // Get user's challenge stats
+    const userChallenges = await ctx.db
+      .query("challengeBattles")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("challengerUserId"), userId),
+          q.eq(q.field("opponentUserId"), userId),
+        ),
+      )
+      .collect();
+
+    const completedChallenges = userChallenges.filter(
+      (c) => c.status === "completed",
+    );
+    const challengesWon = completedChallenges.filter((c) => {
+      const isChallenger = c.challengerUserId === userId;
+      return (
+        (isChallenger && c.winner === "challenger") ||
+        (!isChallenger && c.winner === "opponent")
+      );
+    }).length;
+
+    const challengeWinRate =
+      completedChallenges.length > 0
+        ? Math.round((challengesWon / completedChallenges.length) * 100)
+        : 0;
+
+    const averageScore =
+      completedChallenges.length > 0
+        ? Math.round(
+            completedChallenges.reduce((sum, c) => {
+              const isChallenger = c.challengerUserId === userId;
+              return sum + (isChallenger ? c.challengerScore : c.opponentScore);
+            }, 0) / completedChallenges.length,
+          )
+        : 0;
+
+    return {
+      totalGames,
+      wins,
+      winRate,
+      averageAttempts,
+      challengeStats:
+        completedChallenges.length > 0
+          ? {
+              totalChallenges: completedChallenges.length,
+              challengesWon,
+              challengeWinRate,
+              averageScore,
+            }
+          : undefined,
     };
   },
 });
