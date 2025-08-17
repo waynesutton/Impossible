@@ -1,5 +1,6 @@
 import {
   SignInButton,
+  SignUpButton,
   SignOutButton,
   UserButton,
   useUser,
@@ -31,9 +32,9 @@ export function AuthButton() {
       <SignInButton mode="modal">
         <button className="brutal-button text-sm px-3 py-1">Sign In</button>
       </SignInButton>
-      <SignInButton mode="modal" signUpForceRedirectUrl="/">
+      <SignUpButton mode="modal">
         <button className="brutal-button text-sm px-3 py-1">Sign Up</button>
-      </SignInButton>
+      </SignUpButton>
     </div>
   );
 }

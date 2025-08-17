@@ -14,7 +14,7 @@ import { AuthButton } from "./components/AuthButton";
 import { MyScores } from "./components/MyScores";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ShareableScoreHandler } from "./components/ShareableScoreHandler";
-import { SignInButton } from "@clerk/clerk-react";
+import { SignInButton, SignUpButton } from "@clerk/clerk-react";
 import { Id } from "../convex/_generated/dataModel";
 
 interface GameCompletionData {
@@ -502,11 +502,11 @@ export default function App() {
                     Sign up to see your scores and track your progress across
                     both single-player and challenge modes!
                   </p>
-                  <SignInButton mode="modal">
+                  <SignUpButton mode="modal">
                     <button className="brutal-button px-6 py-3">
                       Sign Up Now
                     </button>
-                  </SignInButton>
+                  </SignUpButton>
                 </div>
               )}
             </div>
