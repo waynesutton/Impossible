@@ -124,33 +124,207 @@ Users can switch between themes using the icon buttons in the top-right navigati
 
 Theme preferences are automatically saved to localStorage and persist across sessions.
 
-## Tech
+## Tech Stack
 
-- Convex (database + functions)
-- React + Vite
-- OpenAI for word generation and hints
-- TailwindCSS + CSS Variables for theming
-- Neobrutalism design principles
+### Frontend
+
+- **React 18** - Modern React with hooks and concurrent features
+- **Vite** - Lightning-fast build tool and dev server
+- **TypeScript** - Type-safe development with full IntelliSense
+- **Tailwind CSS** - Utility-first CSS framework with custom theme system
+- **CSS Variables** - Dynamic theming system supporting multiple themes
+- **Lucide React** - Beautiful icon library for UI components
+
+### Backend & Database
+
+- **Convex** - Full-stack TypeScript platform with real-time database
+- **Convex Functions** - Serverless functions (queries, mutations, actions)
+- **Convex Auth** - Authentication integration with Clerk
+- **Real-time Subscriptions** - Live updates across all connected clients
+- **Convex Scheduling** - Background jobs and cron scheduling
+
+### Authentication & User Management
+
+- **Clerk** - Complete authentication solution with social logins
+- **JWT Tokens** - Secure token-based authentication
+- **Role-Based Access** - Admin and user roles with permissions
+- **Session Management** - Persistent sessions across browser tabs
+
+### AI Integration
+
+- **OpenAI GPT-4** - AI word generation and hint/clue generation
+- **OpenAI API** - Serverless AI actions through Convex
+- **Custom Prompts** - Engineered prompts for game-specific content
+
+#### AI Word Generation System
+
+The game uses sophisticated AI prompts to create challenging words for different game modes:
+
+**Single Player Mode:**
+
+- **Difficulty Target**: Medium to hard words (5-8 letters)
+- **Word Selection**: Uncommon but legitimate English words from standard dictionaries
+- **Examples**: Words like "sprig", "flung", "brisk", "charm" that are real but not commonly guessed
+- **Scoring**: Balanced difficulty to provide achievable but challenging gameplay
+
+**Challenge Mode (1v1 Battles):**
+
+- **Difficulty Target**: Extremely hard words (1 in 10,000 difficulty level)
+- **Word Selection**: Obscure, technical, archaic, or highly specialized vocabulary
+- **Examples**: Words like "zugzwang", "quaich", "ptosis", "fjord" that are exceptionally difficult
+- **Competitive Balance**: Identical words for both players ensure fair head-to-head competition
+- **Timer Pressure**: Shorter time limits (30-60 seconds) combined with extreme difficulty create intense competition
+
+**AI Assistance Features:**
+
+- **Hints**: Contextual clues about word meaning, usage, or category (available after 1 failed attempt)
+- **Letter Clues**: Strategic letter reveals (first/last letters) to help narrow possibilities (available after 2 failed attempts)
+- **Prompt Engineering**: Carefully crafted prompts ensure consistent difficulty and appropriate content for each game mode
+
+### Development & Build Tools
+
+- **Bun/npm/pnpm** - Package manager flexibility
+- **ESLint** - Code quality and consistency
+- **PostCSS** - CSS processing and optimization
+- **Sonner** - Toast notifications for user feedback
+- **Canvas Confetti** - Celebration animations
+
+### Design System
+
+- **Neobrutalism Design** - Bold, expressive UI with thick borders
+- **Multi-theme Support** - Light, dark, and accent theme variants
+- **Responsive Design** - Mobile-first responsive layouts
+- **CSS Grid & Flexbox** - Modern layout techniques
 
 ## Environment Variables
 
+### Convex Environment Variables
+
 Set in Convex environment (convex cloud dev/prod):
 
-- OPENAI_API_KEY: Used by Convex actions to generate words and hints (required)
-- SITE_URL: Used for invites (optional)
+- **OPENAI_API_KEY**: Used by Convex actions to generate words and hints (required)
+- **SITE_URL**: Used for invites (optional)
 
 Optional proxies used in this template (already configured if using the provided backend):
 
-- CONVEX_OPENAI_BASE_URL
-- RESEND_BASE_URL
-- CONVEX_RESEND_API_KEY (unused by the core game)
+- **CONVEX_OPENAI_BASE_URL**: OpenAI API proxy endpoint
+- **RESEND_BASE_URL**: Email service proxy endpoint
+- **CONVEX_RESEND_API_KEY**: Email service API key (unused by the core game)
 
-To view/set variables:
+### Clerk Authentication Variables
 
-```
+Required for frontend authentication (set in your frontend environment):
+
+- **VITE_CLERK_PUBLISHABLE_KEY**: Clerk public key for frontend authentication
+- **CLERK_SECRET_KEY**: Clerk secret key for backend integration (automatically used by Convex)
+
+### Managing Environment Variables
+
+To view/set Convex variables:
+
+```bash
 npx convex env list
 npx convex env set OPENAI_API_KEY your_key
+npx convex env set CLERK_SECRET_KEY your_secret_key
 ```
+
+For frontend Clerk integration, add to your `.env.local`:
+
+```bash
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_key
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+```
+
+## Hosting & Deployment
+
+### Convex Cloud Hosting
+
+This app is hosted on **Convex Cloud**, which provides:
+
+- **Serverless Functions** - Auto-scaling backend functions with zero configuration
+- **Real-time Database** - ACID transactions with live subscriptions
+- **Global Edge Network** - Low-latency response times worldwide
+- **Automatic HTTPS** - SSL certificates and secure connections
+- **99.9% Uptime SLA** - Enterprise-grade reliability and monitoring
+
+### Deployment Architecture
+
+```
+Frontend (Netlify/Vercel) ←→ Convex Cloud ←→ External APIs
+     ↓                          ↓              ↓
+Static Assets              Database         OpenAI
+Theme Assets              Functions         Clerk Auth
+                         Scheduling
+```
+
+### Convex Deployment Process
+
+1. **Development Environment**
+
+   ```bash
+   npx convex dev          # Local development with hot reload
+   npx convex dashboard    # Open local dashboard
+   ```
+
+2. **Production Deployment**
+
+   ```bash
+   npx convex deploy       # Deploy to production
+   npx convex deploy --cmd="npm run build"  # Build and deploy
+   ```
+
+3. **Environment Management**
+   ```bash
+   npx convex env list                    # View environment variables
+   npx convex env set KEY value          # Set production variables
+   npx convex env set KEY value --dev    # Set development variables
+   ```
+
+### Frontend Hosting Options
+
+**Recommended Platforms:**
+
+- **Netlify** - Zero-config deployments with edge functions
+- **Vercel** - Optimized for React/Vite with automatic deployments
+- **Cloudflare Pages** - Global CDN with serverless functions
+
+**Build Configuration:**
+
+```bash
+# Build command
+npm run build
+
+# Output directory
+dist/
+
+# Environment variables needed
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+```
+
+### Database & Backend
+
+- **Convex Cloud Database** - Automatically managed, globally distributed
+- **Function Runtime** - V8 isolates for JavaScript/TypeScript functions
+- **Real-time Sync** - WebSocket connections for live updates
+- **Automatic Backups** - Point-in-time recovery and data protection
+- **Schema Migrations** - Version-controlled database schema changes
+
+### Monitoring & Analytics
+
+Convex provides built-in monitoring:
+
+- **Function Performance** - Execution time and error tracking
+- **Database Queries** - Query performance and optimization insights
+- **Real-time Connections** - WebSocket connection monitoring
+- **Usage Analytics** - Request volume and user activity metrics
+
+### Security Features
+
+- **Authentication** - Integrated with Clerk for user management
+- **Authorization** - Function-level access control and role-based permissions
+- **Data Validation** - Runtime validation with Convex validators
+- **HTTPS Everywhere** - All connections encrypted in transit
+- **Environment Isolation** - Separate dev/prod environments with isolated data
 
 ## Development
 
