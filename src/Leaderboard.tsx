@@ -705,7 +705,7 @@ export function Leaderboard({
                         (game.isAnonymous
                           ? "Anonymous"
                           : game.playerName || "Player")}{" "}
-                      cheated
+                      Used Secret Word for a win
                     </span>
                     <div
                       className="text-sm"

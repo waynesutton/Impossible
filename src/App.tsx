@@ -423,7 +423,7 @@ export default function App() {
                         Hints:
                       </strong>
                       <p style={{ color: "var(--text-secondary)" }}>
-                        Available after 2 failed attempts
+                        Hints and clues available after 1 failed attempts
                       </p>
                     </div>
                   </div>

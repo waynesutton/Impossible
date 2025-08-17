@@ -248,7 +248,7 @@ export function MyScores() {
                           >
                             {game.completed
                               ? game.usedSecretWord
-                                ? "CHEATED"
+                                ? "Used Secret Word"
                                 : "WON"
                               : "FAILED"}
                           </div>

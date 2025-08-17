@@ -3,7 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Impossible Game - Visual Mockup</title>
+    <title>Impossible Word</title>
+
+    <!-- OpenGraph meta tags for social sharing -->
+    <meta property="og:title" content="Impossible Word" />
+    <meta
+      property="og:description"
+      content="Goal: Guess the impossible word
+- Attempts: You get 3 tries per game!"
+    />
+    <meta property="og:image" content="https://impossible.fun/og-preview.png" />
+    <meta property="og:url" content="https://impossible.fun/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Impossible Word" />
+
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Impossible Word" />
+    <meta
+      name="twitter:description"
+      content="Goal: Guess the impossible word
+- Attempts: You get 3 tries per game!"
+    />
+    <meta
+      name="twitter:image"
+      content="https://impossible.fun/og-preview.png"
+    />
+
+    <!-- Additional meta tags -->
+    <meta
+      name="description"
+      content="Goal: Guess the impossible word
+- Attempts: You get 3 tries per game!"
+    />
+    <meta
+      name="keywords"
+      content="word game, puzzle, ai game, ai word game, impossible, challenge, spelling, wordguessr, wordgame"
+    />
     <style>
       * {
         margin: 0;
@@ -290,238 +326,616 @@
       <!-- Left Panel - Instructions -->
       <div class="panel left-panel">
         <div class="logo">Impossible</div>
-        <div class="tagline">Play at impossible.waynesutton.com</div>
 
-        <!-- Word Example -->
-        <div style="margin: 40px 0">
-          <div class="word-display">
-            <div class="letter-box">P</div>
-            <div class="letter-box highlight">U</div>
-            <div class="letter-box">Z</div>
-            <div class="letter-box">Z</div>
-            <div class="letter-box">L</div>
-            <div class="letter-box">E</div>
+        <!-- Game Example from Images -->
+        <div style="margin: 40px 0 60px 0">
+          <div
+            style="
+              background: #f5d85a;
+              padding: 20px;
+              border: 3px solid #000;
+              margin-bottom: 20px;
+              margin-top: 20px;
+            "
+          >
+            <div
+              style="
+                text-align: center;
+                margin-bottom: 15px;
+                font-size: 16px;
+                font-weight: 600;
+                color: #666;
+              "
+            >
+              LETTERS IN THE WORD:
+            </div>
+            <div
+              style="
+                display: flex;
+                justify-content: center;
+                gap: 8px;
+                flex-wrap: wrap;
+              "
+            >
+              <div
+                style="
+                  display: flex;
+                  justify-content: center;
+                  gap: 8px;
+                  width: 100%;
+                "
+              >
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  X
+                </div>
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  I
+                </div>
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  R
+                </div>
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  U
+                </div>
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  O
+                </div>
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  Q
+                </div>
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  Y
+                </div>
+              </div>
+              <div style="display: flex; justify-content: center; width: 100%">
+                <div
+                  class="letter-box"
+                  style="background: #87ceeb; color: #333"
+                >
+                  T
+                </div>
+              </div>
+            </div>
+            <div class="word-display" style="margin-top: 20px">
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+              <div
+                class="letter-box"
+                style="background: white; color: #333"
+              ></div>
+            </div>
           </div>
-        </div>
+          <div class="instruction-title">Guess the impossible word</div>
+          <div class="instruction-text">
+            You have 3 attempts to guess an AI-generated difficult word.
+          </div>
 
-        <div class="instruction-title">Guess the impossible word</div>
-
-        <div class="instruction-text">
-          You have 3 attempts to find the complete word.
-        </div>
-
-        <div class="instruction-text">
-          Letters shuffle once to give you a starting hint and help you solve
-          the puzzle.
-        </div>
-
-        <!-- Alphabet Grid -->
-        <div class="alphabet-grid">
-          <div class="alphabet-letter">Q</div>
-          <div class="alphabet-letter">W</div>
-          <div class="alphabet-letter">E</div>
-          <div class="alphabet-letter used">R</div>
-          <div class="alphabet-letter">T</div>
-          <div class="alphabet-letter">Y</div>
-          <div class="alphabet-letter">U</div>
-          <div class="alphabet-letter used">I</div>
-          <div class="alphabet-letter">O</div>
-          <div class="alphabet-letter used">P</div>
-
-          <div class="alphabet-letter used">A</div>
-          <div class="alphabet-letter">S</div>
-          <div class="alphabet-letter used">D</div>
-          <div class="alphabet-letter">F</div>
-          <div class="alphabet-letter">G</div>
-          <div class="alphabet-letter">H</div>
-          <div class="alphabet-letter">J</div>
-          <div class="alphabet-letter">K</div>
-          <div class="alphabet-letter used">L</div>
-
-          <div class="alphabet-letter">Z</div>
-          <div class="alphabet-letter">X</div>
-          <div class="alphabet-letter">C</div>
-          <div class="alphabet-letter">V</div>
-          <div class="alphabet-letter">B</div>
-          <div class="alphabet-letter">N</div>
-          <div class="alphabet-letter">M</div>
-          <div class="alphabet-letter">⌫</div>
+          <div class="tagline" style="text-align: center">
+            Play at impossible.fun
+          </div>
         </div>
       </div>
 
-      <!-- Center Panel - Gameplay -->
+      <!-- Center Panel - Friend Help & Challenge Mode -->
       <div class="panel">
-        <!-- Shuffled Letters Hint -->
-        <div class="shuffled-letters">
-          <div class="shuffled-title">Letters in the word:</div>
-          <div class="letter-hints">
-            <span class="letter-hint">P</span>
-            <span class="letter-hint">U</span>
-            <span class="letter-hint">Z</span>
-            <span class="letter-hint">L</span>
-            <span class="letter-hint">E</span>
-            <span class="letter-hint">Z</span>
+        <div class="completion-title">Play with Friends</div>
+        <!-- Challenge Rules -->
+        <div
+          style="
+            background: #87ceeb;
+            padding: 20px;
+            margin: 49px 0 20px 0;
+            border: 3px solid #000;
+          "
+        >
+          <div style="font-weight: 700; margin-bottom: 15px; color: #333">
+            Challenge Rules:
+          </div>
+          <div style="font-size: 14px; line-height: 1.5; color: #333">
+            • 3 words to guess<br />
+            • 60 seconds per word<br />
+            • Use Ask for Hint & Ask for Clue features<br />
+            • Highest total score wins!
           </div>
         </div>
 
-        <!-- Main Word Display -->
-        <div class="word-display">
-          <div class="letter-box filled">P</div>
-          <div class="letter-box filled">U</div>
-          <div class="letter-box correct">Z</div>
-          <div class="letter-box correct">Z</div>
-          <div class="letter-box correct">L</div>
-          <div class="letter-box correct">E</div>
+        <!-- Friend Help Section -->
+        <div
+          style="
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 20px 0;
+            border: 2px solid #ccc;
+          "
+        >
+          <div style="font-weight: 600; margin-bottom: 10px">
+            Ask a Friend for Help
+          </div>
+          <div style="font-size: 14px; margin-bottom: 15px">
+            Share link with friends to get word suggestions
+          </div>
+          <button
+            class="action-btn"
+            style="
+              width: 100%;
+              background: #ff69b4;
+              color: white;
+              border: 3px solid #000;
+            "
+          >
+            ASK A FRIEND FOR HELP
+          </button>
         </div>
 
-        <!-- Input Section -->
-        <div class="input-section">
-          <input
-            type="text"
-            class="game-input"
-            placeholder="Type the word..."
-            value="PUZZLE"
-            readonly
-          />
-        </div>
-
-        <!-- Attempts Counter -->
-        <div class="attempts-counter">Attempts: 2/3</div>
-
-        <div class="instruction-text">
-          Try to use as few attempts as possible and see how you compare with
-          other players.
-        </div>
-
-        <!-- Alphabet Display -->
-        <div class="alphabet-grid">
-          <div class="alphabet-letter">Q</div>
-          <div class="alphabet-letter">W</div>
-          <div class="alphabet-letter">E</div>
-          <div class="alphabet-letter used">R</div>
-          <div class="alphabet-letter">T</div>
-          <div class="alphabet-letter">Y</div>
-          <div class="alphabet-letter">U</div>
-          <div class="alphabet-letter used">I</div>
-          <div class="alphabet-letter">O</div>
-          <div class="alphabet-letter used">P</div>
-
-          <div class="alphabet-letter used">A</div>
-          <div class="alphabet-letter">S</div>
-          <div class="alphabet-letter used">D</div>
-          <div class="alphabet-letter">F</div>
-          <div class="alphabet-letter">G</div>
-          <div class="alphabet-letter">H</div>
-          <div class="alphabet-letter">J</div>
-          <div class="alphabet-letter">K</div>
-          <div class="alphabet-letter used">L</div>
-
-          <div class="alphabet-letter">Z</div>
-          <div class="alphabet-letter">X</div>
-          <div class="alphabet-letter">C</div>
-          <div class="alphabet-letter">V</div>
-          <div class="alphabet-letter">B</div>
-          <div class="alphabet-letter">N</div>
-          <div class="alphabet-letter">M</div>
-          <div class="alphabet-letter">⌫</div>
+        <!-- Game Input Example -->
+        <div style="text-align: center; margin: 20px 0">
+          <div
+            style="
+              border: 3px solid #000;
+              padding: 15px;
+              background: white;
+              margin-bottom: 10px;
+            "
+          >
+            <input
+              type="text"
+              placeholder="TYPE THE WORD..."
+              style="
+                border: none;
+                outline: none;
+                text-align: center;
+                font-size: 16px;
+                width: 100%;
+                text-transform: uppercase;
+              "
+              readonly
+            />
+          </div>
+          <div style="font-weight: 600; margin-top: 10px">Attempts: 0/3</div>
         </div>
       </div>
 
-      <!-- Right Panel - Completion Stats -->
+      <!-- Right Panel - Game Complete -->
       <div class="panel">
-        <div class="completion-title">Puzzle Cleared!</div>
-        <div class="completion-subtitle">You used 2 attempts.</div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-          <button class="action-btn">≡<br />Menu</button>
-          <button class="action-btn">↻<br />Retry</button>
-          <button class="action-btn">▶▶<br />Next</button>
-        </div>
-
-        <!-- Statistics Section -->
+        <div class="completion-title">Game Features</div>
+        <!-- Game Features -->
         <div class="stats-section">
-          <div class="stats-title">How other players scored</div>
+          <div
+            style="
+              background: #f5d85a;
+              padding: 15px;
+              margin: 49px 0 15px 0;
+              border: 3px solid #000;
+            "
+          >
+            <div style="font-weight: 700; margin-bottom: 10px; color: #333">
+              AI Assistance
+            </div>
+            <div style="font-size: 14px; line-height: 1.5; color: #333">
+              • Get hints after 1 failed attempt<br />
+              • Request letter clues after 2 attempts<br />
+              • AI generates contextual help
+            </div>
+          </div>
 
           <div
             style="
-              display: flex;
-              justify-content: space-between;
-              font-size: 12px;
-              font-weight: 600;
-              margin-bottom: 5px;
+              background: #ff69b4;
+              padding: 15px;
+              margin: 15px 0;
+              border: 3px solid #000;
             "
           >
-            <span>Attempts used</span>
-            <span>Percent of players</span>
-          </div>
-
-          <div class="stat-row">
-            <span>1</span>
-            <div class="stat-bar">
-              <div class="stat-fill" style="width: 15%"></div>
+            <div style="font-weight: 700; margin-bottom: 10px; color: white">
+              Friend Collaboration
             </div>
-            <span>15%</span>
-          </div>
-
-          <div class="stat-row your-score">
-            <span>2</span>
-            <div class="stat-bar">
-              <div class="stat-fill highlight" style="width: 45%"></div>
+            <div style="font-size: 14px; line-height: 1.5; color: white">
+              • Share invite links with friends<br />
+              • Get up to 3 word suggestions<br />
+              • Real-time collaborative help
             </div>
-            <span>45%</span>
           </div>
 
-          <div class="stat-row">
-            <span>3</span>
-            <div class="stat-bar">
-              <div class="stat-fill" style="width: 30%"></div>
+          <div
+            style="
+              background: #87ceeb;
+              padding: 15px;
+              margin: 15px 0;
+              border: 3px solid #000;
+            "
+          >
+            <div style="font-weight: 700; margin-bottom: 10px; color: #333">
+              Challenge Mode
             </div>
-            <span>30%</span>
-          </div>
-
-          <div class="stat-row">
-            <span>Failed</span>
-            <div class="stat-bar">
-              <div class="stat-fill" style="width: 10%"></div>
+            <div style="font-size: 14px; line-height: 1.5; color: #333">
+              • Head-to-head battles with friends<br />
+              • 3 words, timed rounds<br />
+              • Compete for highest score
             </div>
-            <span>10%</span>
           </div>
+        </div>
+      </div>
+    </div>
 
-          <div class="less-text">Less is better</div>
+    <!-- Product Hunt Launch Section -->
+    <div
+      style="
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 40px;
+        background: #ffa500;
+        border: 3px solid #000;
+        box-shadow: 8px 8px 0 #000;
+      "
+    >
+      <h2
+        style="
+          font-size: 36px;
+          font-weight: 900;
+          margin-bottom: 20px;
+          color: #333;
+        "
+      >
+        Product Hunt Launch Strategy
+      </h2>
+
+      <div
+        style="
+          background: white;
+          padding: 30px;
+          margin: 20px 0;
+          border: 3px solid #000;
+        "
+      >
+        <h3
+          style="
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+          "
+        >
+          Launch Preparation Checklist
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px">
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 15px; color: #333">
+              Pre-Launch (1-2 weeks before)
+            </h4>
+            <ul
+              style="
+                font-size: 14px;
+                line-height: 1.6;
+                color: #333;
+                list-style-position: inside;
+              "
+            >
+              <li>✓ Build hunter network and community</li>
+              <li>✓ Create engaging GIFs and screenshots</li>
+              <li>✓ Write compelling product description</li>
+              <li>✓ Schedule social media announcements</li>
+              <li>✓ Prepare maker comment responses</li>
+              <li>✓ Set launch date for Tuesday-Thursday</li>
+            </ul>
+          </div>
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 15px; color: #333">
+              Launch Day (12:01 AM Pacific)
+            </h4>
+            <ul
+              style="
+                font-size: 14px;
+                line-height: 1.6;
+                color: #333;
+                list-style-position: inside;
+              "
+            >
+              <li>✓ Submit at exactly 12:01 AM PST</li>
+              <li>✓ Share launch link (not upvote request)</li>
+              <li>✓ Engage with every comment quickly</li>
+              <li>✓ Post updates throughout the day</li>
+              <li>✓ Thank supporters and build relationships</li>
+              <li>✓ Monitor ranking and adjust strategy</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="
+          background: #87ceeb;
+          padding: 20px;
+          margin: 20px 0;
+          border: 3px solid #000;
+        "
+      >
+        <h4 style="font-weight: 700; margin-bottom: 15px; color: #333">
+          Product Hunt Best Practices
+        </h4>
+        <div style="font-size: 14px; line-height: 1.6; color: #333">
+          <strong>Do:</strong> Build genuine community, engage authentically,
+          share your story, ask for feedback<br />
+          <strong>Don't:</strong> Ask directly for upvotes, spam communities,
+          ignore comments, launch unprepared<br />
+          <strong>Key Metrics:</strong> Aim for top 5 daily, 100+ upvotes, 20+
+          comments, meaningful maker engagement
+        </div>
+      </div>
+
+      <div
+        style="
+          background: #90ee90;
+          padding: 20px;
+          margin: 20px 0;
+          border: 3px solid #000;
+        "
+      >
+        <h4 style="font-weight: 700; margin-bottom: 15px; color: #333">
+          Impossible Word: Perfect Product Hunt Fit
+        </h4>
+        <div style="font-size: 14px; line-height: 1.6; color: #333">
+          <strong>Why it works:</strong> AI-powered game, unique multiplayer
+          features, beautiful design, viral potential<br />
+          <strong>Target audience:</strong> Makers, gamers, AI enthusiasts,
+          social players<br />
+          <strong>Compelling features:</strong> Challenge friends, AI
+          assistance, real-time collaboration, competitive scoring
+        </div>
+      </div>
+    </div>
+
+    <!-- Reddit Communities Launch Section -->
+    <div
+      style="
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 40px;
+        background: #ff6b35;
+        border: 3px solid #000;
+        box-shadow: 8px 8px 0 #000;
+      "
+    >
+      <h2
+        style="
+          font-size: 36px;
+          font-weight: 900;
+          margin-bottom: 20px;
+          color: white;
+        "
+      >
+        Reddit Community Strategy
+      </h2>
+
+      <div
+        style="
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 30px;
+          margin: 20px 0;
+        "
+      >
+        <div style="background: white; padding: 25px; border: 3px solid #000">
+          <h3
+            style="
+              font-size: 20px;
+              font-weight: 700;
+              margin-bottom: 15px;
+              color: #333;
+            "
+          >
+            Primary Target Subreddits
+          </h3>
+          <div style="font-size: 14px; line-height: 1.8; color: #333">
+            <strong>r/SaaS</strong> (120k members) - For indie makers and SaaS
+            products<br />
+            <strong>r/WebGames</strong> (85k members) - Browser-based games
+            showcase<br />
+            <strong>r/IndieGaming</strong> (180k members) - Independent game
+            developers<br />
+            <strong>r/WordGames</strong> (25k members) - Niche word game
+            community<br />
+            <strong>r/InternetIsBeautiful</strong> (17M members) - Viral web
+            discovery<br />
+            <strong>r/gamedev</strong> (1M members) - Game development community
+          </div>
         </div>
 
-        <!-- Alphabet Display -->
-        <div class="alphabet-grid">
-          <div class="alphabet-letter used">Q</div>
-          <div class="alphabet-letter used">W</div>
-          <div class="alphabet-letter used">E</div>
-          <div class="alphabet-letter used">R</div>
-          <div class="alphabet-letter used">T</div>
-          <div class="alphabet-letter used">Y</div>
-          <div class="alphabet-letter used">U</div>
-          <div class="alphabet-letter used">I</div>
-          <div class="alphabet-letter used">O</div>
-          <div class="alphabet-letter used">P</div>
+        <div style="background: white; padding: 25px; border: 3px solid #000">
+          <h3
+            style="
+              font-size: 20px;
+              font-weight: 700;
+              margin-bottom: 15px;
+              color: #333;
+            "
+          >
+            Secondary Communities
+          </h3>
+          <div style="font-size: 14px; line-height: 1.8; color: #333">
+            <strong>r/artificial</strong> (300k members) - AI enthusiasts<br />
+            <strong>r/startups</strong> (1.2M members) - Startup showcase<br />
+            <strong>r/programming</strong> (4M members) - Developer community<br />
+            <strong>r/webdev</strong> (800k members) - Web developers<br />
+            <strong>r/todayilearned</strong> (31M members) - Educational
+            content<br />
+            <strong>r/gaming</strong> (37M members) - General gaming community
+          </div>
+        </div>
+      </div>
 
-          <div class="alphabet-letter used">A</div>
-          <div class="alphabet-letter used">S</div>
-          <div class="alphabet-letter used">D</div>
-          <div class="alphabet-letter used">F</div>
-          <div class="alphabet-letter used">G</div>
-          <div class="alphabet-letter used">H</div>
-          <div class="alphabet-letter used">J</div>
-          <div class="alphabet-letter used">K</div>
-          <div class="alphabet-letter used">L</div>
+      <div
+        style="
+          background: #f5d85a;
+          padding: 25px;
+          margin: 20px 0;
+          border: 3px solid #000;
+        "
+      >
+        <h3
+          style="
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+          "
+        >
+          Reddit Engagement Strategy
+        </h3>
+        <div
+          style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px"
+        >
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 10px; color: #333">
+              Content Approach
+            </h4>
+            <ul
+              style="
+                font-size: 13px;
+                line-height: 1.5;
+                color: #333;
+                list-style-position: inside;
+              "
+            >
+              <li>Share development story</li>
+              <li>Highlight unique AI features</li>
+              <li>Demonstrate friend collaboration</li>
+              <li>Show challenge mode battles</li>
+              <li>Discuss technical architecture</li>
+            </ul>
+          </div>
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 10px; color: #333">
+              Timing & Frequency
+            </h4>
+            <ul
+              style="
+                font-size: 13px;
+                line-height: 1.5;
+                color: #333;
+                list-style-position: inside;
+              "
+            >
+              <li>Post Tuesday-Thursday 9-11 AM EST</li>
+              <li>Space posts 2-3 days apart</li>
+              <li>Avoid weekend posting</li>
+              <li>Follow community rules strictly</li>
+              <li>Engage actively in comments</li>
+            </ul>
+          </div>
+          <div>
+            <h4 style="font-weight: 700; margin-bottom: 10px; color: #333">
+              Success Metrics
+            </h4>
+            <ul
+              style="
+                font-size: 13px;
+                line-height: 1.5;
+                color: #333;
+                list-style-position: inside;
+              "
+            >
+              <li>Target 100+ upvotes per post</li>
+              <li>Aim for 50+ meaningful comments</li>
+              <li>Drive 1000+ website visits</li>
+              <li>Build email subscriber list</li>
+              <li>Generate social media buzz</li>
+            </ul>
+          </div>
+        </div>
+      </div>
 
-          <div class="alphabet-letter used">Z</div>
-          <div class="alphabet-letter used">X</div>
-          <div class="alphabet-letter used">C</div>
-          <div class="alphabet-letter used">V</div>
-          <div class="alphabet-letter used">B</div>
-          <div class="alphabet-letter used">N</div>
-          <div class="alphabet-letter used">M</div>
-          <div class="alphabet-letter used">⌫</div>
+      <div
+        style="
+          background: white;
+          padding: 25px;
+          margin: 20px 0;
+          border: 3px solid #000;
+        "
+      >
+        <h3
+          style="
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+          "
+        >
+          Sample Reddit Post Templates
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px">
+          <div
+            style="background: #f0f0f0; padding: 15px; border: 2px solid #ccc"
+          >
+            <h4 style="font-weight: 700; margin-bottom: 8px; color: #333">
+              r/SaaS Post
+            </h4>
+            <div style="font-size: 12px; line-height: 1.4; color: #333">
+              "Built an AI word game where friends can help each other in
+              real-time. 3 months from idea to launch using Convex + React.
+              Challenge mode lets you battle friends head-to-head. What do you
+              think of the collaborative gameplay approach?"
+            </div>
+          </div>
+          <div
+            style="background: #f0f0f0; padding: 15px; border: 2px solid #ccc"
+          >
+            <h4 style="font-weight: 700; margin-bottom: 8px; color: #333">
+              r/WebGames Post
+            </h4>
+            <div style="font-size: 12px; line-height: 1.4; color: #333">
+              "Impossible Word: AI generates obscure words, you get 3 attempts
+              to guess. Invite friends for help or battle them in challenge
+              mode. Real-time collaboration meets competitive word guessing. Try
+              it and let me know what you think!"
+            </div>
+          </div>
         </div>
       </div>
     </div>
