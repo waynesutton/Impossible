@@ -2,6 +2,18 @@
 
 A Convex-powered real-time word game with Neobrutalism design featuring both solo challenges and head-to-head battles. Each player gets a unique, hard, AI-generated word. You have 3 attempts to guess the full word. After two failed attempts, you can request a hint. Invite friends to suggest words or challenge them to compete directly.
 
+🎮 **Play Now**: [https://impossible.fun/](https://impossible.fun/)
+
+## Open Source
+
+This project is open source and available on GitHub. We welcome contributions, bug reports, and feature requests from the community.
+
+- **Repository**: Available on GitHub
+- **License**: Open source (see LICENSE file)
+- **Contributions**: Community contributions welcome
+- **Issues**: Report bugs and request features through GitHub Issues
+- **Documentation**: Comprehensive docs for developers and contributors
+
 ## How the App Works
 
 The Impossible Word game is a challenging word-guessing experience that combines AI-generated content, real-time collaboration, and competitive gameplay with multiple modes:
@@ -189,6 +201,16 @@ The game uses sophisticated AI prompts to create challenging words for different
 - **Sonner** - Toast notifications for user feedback
 - **Canvas Confetti** - Celebration animations
 
+### Live Demo
+
+Experience the game live at [https://impossible.fun/](https://impossible.fun/) to see all features in action, including:
+
+- Single player mode with AI-generated words
+- Challenge mode for head-to-head battles
+- Real-time leaderboards and scoring
+- Multiple theme options (Neobrutalism, Original, Dark)
+- Optional authentication with personal profiles
+
 ### Design System
 
 - **Neobrutalism Design** - Bold, expressive UI with thick borders
@@ -337,6 +359,22 @@ pnpm dev # runs vite and convex dev
 ```
 
 Convex dev will watch functions in `convex/` and hot reload.
+
+### Contributing
+
+We welcome contributions to make Impossible Word even better! Here's how you can help:
+
+1. **Fork the repository** on GitHub
+2. **Create a feature branch** for your changes
+3. **Test thoroughly** with both single player and challenge modes
+4. **Submit a pull request** with a clear description of your changes
+
+### Getting Help
+
+- **Live Demo**: Try the game at [https://impossible.fun/](https://impossible.fun/)
+- **Documentation**: Check the comprehensive docs in this README
+- **Issues**: Report bugs or request features on GitHub
+- **Community**: Join discussions and share feedback
 
 ## Data Model (key tables)
 
