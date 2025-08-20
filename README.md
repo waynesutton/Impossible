@@ -38,28 +38,56 @@ The Impossible Word game is a challenging word-guessing experience that combines
 7. **Battle Results**: Final scores compared, winner declared, results saved to leaderboard
 8. **Rematch System**: Players can challenge each other again for competitive replay
 
+### Crossword Mode (Daily Puzzles)
+
+1. **Daily Generation**: Each user gets a unique 7x7 crossword puzzle generated daily by AI
+2. **Grid Layout**: Traditional crossword format with blocked squares and numbered clues
+3. **Word Intersections**: 6-8 interconnected words (3-6 letters each) with proper crossword structure
+4. **AI Clues**: Each word has an AI-generated clue that's challenging but fair
+5. **Progress Tracking**: Real-time progress saving with 24-hour puzzle persistence
+6. **AI Assistance**: Request AI hints for specific words or letter reveals
+7. **Friend Collaboration**: Unlimited friend suggestions via invite links (unlike the 3-suggestion limit in single-player)
+8. **Completion Scoring**: Points based on completion time, hints used, and assistance received
+9. **Expiration System**: Puzzles expire after 24 hours and show the completed solution
+
 ### Core Features
 
-- **Goal**: Guess the impossible word (solo) or outscore your opponent (challenge)
-- **Attempts**: You get 3 tries per game in both modes
-- **Hints**: AI-generated hints available after 1 attempt
-- **Clues**: First/last letter reveals available after 2 attempts
-- **Friends**: Invite friends to suggest words or challenge them to compete
-- **Fresh**: New impossible word every game
+- **Goal**: Guess the impossible word (solo), outscore your opponent (challenge), or complete daily crosswords
+- **Attempts**: 3 tries per game in word modes, unlimited attempts for crossword completion
+- **Hints**: AI-generated hints available after 1 attempt (word games) or on-demand (crosswords)
+- **Clues**: First/last letter reveals (word games) or AI letter reveals (crosswords)
+- **Friends**: Invite friends to suggest words, challenge them to compete, or help with crosswords
+- **Fresh**: New impossible word every game, new crossword puzzle daily
 - **Challenge Battles**: Compete head-to-head with friends in timed rounds
-- **Authentication**: Optional login to save personal scores and challenge history
+- **Daily Crosswords**: Solve AI-generated 7x7 crossword puzzles with friend collaboration
+- **Authentication**: Optional login to save personal scores across all game modes and unlock crossword history
 - **Secret Word**: There's a special secret word that always wins (not documented publicly)
 
 ### Game Mechanics
+
+**Word Games (Single Player & Challenge):**
 
 - No per-letter resets. A full attempt is counted only when you submit a complete word
 - The letters are not reshuffled mid-game; you always see the fixed word layout
 - Third attempt has a 60-second timer for added pressure (solo mode)
 - Challenge mode: Dynamic timers - 60 seconds for rounds 1&2, 30 seconds for round 3
-- Real-time collaboration with friends through suggestions
-- Anonymous or named gameplay with public leaderboard tracking
-- Authenticated users get personal profiles with game history and stats
+- Real-time collaboration with friends through suggestions (3 max for single-player, unlimited for crosswords)
+
+**Crossword Mode:**
+
+- 7x7 grid with 6-8 interconnected words following traditional crossword rules
+- 24-hour puzzle persistence with automatic daily generation
+- Real-time progress saving and grid state synchronization
+- Unlimited friend suggestions via shareable invite links
+- AI hint generation for word context and AI letter reveals for specific positions
+- Completion scoring based on time, assistance used, and hints requested
+
+**General:**
+
+- Anonymous or named gameplay with public leaderboard tracking across all modes
+- Authenticated users get personal profiles with comprehensive game history and stats
 - Challenge battles feature unique word generation (1 in 10,000 difficulty)
+- Crossword puzzles use AI-generated traditional crossword structure with symmetry and proper intersections
 
 ## Project Structure
 
@@ -70,8 +98,10 @@ impossible/
 │   ├── ImpossibleGame.tsx        # Core single-player game component with word guessing logic
 │   ├── ChallengeMode.tsx         # Challenge vs opponent game component for 1v1 battles
 │   ├── ChallengeSetup.tsx        # Challenge creation and invitation interface
+│   ├── ImpossibleCrossword.tsx   # Daily crossword puzzle component with 7x7 grid
+│   ├── CrosswordHelper.tsx       # Friend helper interface for crossword collaboration
 │   ├── Dashboard.tsx             # Admin dashboard with comprehensive analytics and moderation
-│   ├── Leaderboard.tsx           # Winners hall of fame, recent plays, and challenge results
+│   ├── Leaderboard.tsx           # Winners hall of fame, recent plays, challenge results, and crossword completions
 │   ├── HelperGame.tsx            # Friend helper interface for collaborative word suggestions
 │   ├── ThemeSwitcher.tsx         # Theme switching component (3 themes)
 │   ├── components/               # Reusable UI components
@@ -89,10 +119,11 @@ impossible/
 │   ├── auth.config.ts            # Clerk authentication configuration for Convex
 │   ├── auth/
 │   │   └── helpers.ts            # Authentication helper functions
-│   ├── schema.ts                 # Complete database schema (game + challenge + auth tables)
+│   ├── schema.ts                 # Complete database schema (game + challenge + crossword + auth tables)
 │   ├── game.ts                   # Single-player game logic, AI integration, word generation
 │   ├── challengeBattle.ts        # Challenge mode logic, 1v1 battles, scoring system
-│   ├── leaderboard.ts            # Leaderboard queries, analytics, and user statistics
+│   ├── crossword.ts              # Crossword mode logic, AI puzzle generation, daily persistence
+│   ├── leaderboard.ts            # Leaderboard queries, analytics, and user statistics across all modes
 │   ├── router.ts                 # HTTP routing configuration
 │   ├── http.ts                   # HTTP endpoints for external integrations
 │   └── _generated/               # Auto-generated Convex types and API definitions
@@ -386,6 +417,13 @@ We welcome contributions to make Impossible Word even better! Here's how you can
 - **gameResults**: finalized single-player results (won/lost, attempts, names)
 - **invites/helpers/suggestions**: friend assistance system for collaborative play
 
+### Crossword Mode
+
+- **crosswordPuzzles**: AI-generated daily 7x7 crossword puzzles with words, clues, and grid positions
+- **userCrosswordAttempts**: user progress tracking across 24-hour puzzle sessions
+- **crosswordInvites**: shareable invitation links for friend collaboration on puzzles
+- **crosswordSuggestions**: unlimited friend suggestions for specific crossword words
+
 ### Challenge Mode (1v1 Battles)
 
 - **challengeBattles**: head-to-head game sessions with scores and status tracking
@@ -415,6 +453,12 @@ The leaderboard features multiple sections to showcase different types of achiev
 - **Challenge Battles**: Shows head-to-head competition results with "Challenger vs Opponent" format
 - **Battle History**: Displays individual scores, winner, and completion times for 1v1 battles
 - **Challenge Statistics**: For authenticated users, personal challenge win/loss records and performance metrics
+
+### Crossword Results
+
+- **Daily Completions**: Shows successful crossword puzzle completions with completion time and assistance used
+- **Crossword Leaderboard**: Displays fastest completion times and most efficient solvers (minimal hints/clues used)
+- **Puzzle History**: For authenticated users, personal crossword completion history and statistics
 
 ### Authentication Benefits
 

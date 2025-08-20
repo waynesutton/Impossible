@@ -70,6 +70,12 @@ export function ImpossibleCrossword({
   const [showCopySuccess, setShowCopySuccess] = useState(false);
   const [currentHint, setCurrentHint] = useState<string | null>(null);
   const [currentClue, setCurrentClue] = useState<string | null>(null);
+  const [currentHintWordIndex, setCurrentHintWordIndex] = useState<
+    number | null
+  >(null);
+  const [currentClueWordIndex, setCurrentClueWordIndex] = useState<
+    number | null
+  >(null);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(true);
   const [usedSecretCode, setUsedSecretCode] = useState<boolean>(false);
   const [currentWordInput, setCurrentWordInput] = useState<string>("");
@@ -78,6 +84,9 @@ export function ImpossibleCrossword({
   const [showClearButton, setShowClearButton] = useState<boolean>(false);
   const [localCompletedWords, setLocalCompletedWords] = useState<Set<number>>(
     new Set(),
+  );
+  const [completionMessage, setCompletionMessage] = useState<string | null>(
+    null,
   );
 
   // Debounced progress update for real-time sync
@@ -197,8 +206,13 @@ export function ImpossibleCrossword({
 
         wordCells.add(`${row},${col}`);
 
-        // Check if this letter is correct
-        if (!grid[row] || !grid[row][col] || grid[row][col].trim() === "") {
+        // Check if this letter is correct (skip blocked cells)
+        if (
+          !grid[row] ||
+          !grid[row][col] ||
+          grid[row][col].trim() === "" ||
+          grid[row][col] === "#"
+        ) {
           wordCorrect = false;
         } else if (
           grid[row][col].toUpperCase() !== wordPos.word[i].toUpperCase()
@@ -212,11 +226,16 @@ export function ImpossibleCrossword({
       }
     }
 
-    // Check if all word cells are filled
+    // Check if all word cells are filled (excluding blocked cells)
     let allWordCellsFilled = true;
     for (const cellKey of wordCells) {
       const [row, col] = cellKey.split(",").map(Number);
-      if (!grid[row] || !grid[row][col] || grid[row][col].trim() === "") {
+      if (
+        !grid[row] ||
+        !grid[row][col] ||
+        grid[row][col].trim() === "" ||
+        grid[row][col] === "#"
+      ) {
         allWordCellsFilled = false;
         break;
       }
@@ -226,10 +245,14 @@ export function ImpossibleCrossword({
   };
 
   const handleClearCrossword = () => {
-    const emptyGrid = Array(currentCrossword?.gridSize || 7)
-      .fill(null)
-      .map(() => Array(currentCrossword?.gridSize || 7).fill(""));
-    setGrid(emptyGrid);
+    if (!currentCrossword?.grid) return;
+
+    // Create a copy of the original grid structure, keeping blocked cells
+    const clearedGrid = currentCrossword.grid.map((row: string[]) =>
+      row.map((cell: string) => (cell === "#" ? "#" : "")),
+    );
+
+    setGrid(clearedGrid);
     setCurrentWordInput("");
     setSelectedClue(null);
     setShowClearButton(false);
@@ -244,9 +267,27 @@ export function ImpossibleCrossword({
   // Initialize grid when crossword loads
   useEffect(() => {
     if (currentCrossword?.gridSize) {
-      const newGrid = Array(currentCrossword.gridSize)
-        .fill(null)
-        .map(() => Array(currentCrossword.gridSize).fill(""));
+      // Use the grid from the database if available, otherwise create empty grid
+      let newGrid: string[][];
+
+      if (currentCrossword.grid && currentCrossword.grid.length > 0) {
+        // Use the stored grid structure (includes blocked cells marked with "#")
+        newGrid = currentCrossword.grid.map((row: string[]) => [...row]);
+
+        // Clear out any letters, keeping only blocked cells
+        for (let rowIdx = 0; rowIdx < newGrid.length; rowIdx++) {
+          for (let col = 0; col < newGrid[rowIdx].length; col++) {
+            if (newGrid[rowIdx][col] !== "#") {
+              newGrid[rowIdx][col] = ""; // Clear letters, keep blocked cells
+            }
+          }
+        }
+      } else {
+        // Fallback: create empty grid if no stored grid
+        newGrid = Array(currentCrossword.gridSize)
+          .fill(null)
+          .map(() => Array(currentCrossword.gridSize).fill(""));
+      }
 
       // Fill in user progress if available
       if (currentCrossword.userProgress?.currentProgress) {
@@ -263,7 +304,11 @@ export function ImpossibleCrossword({
                   wordPos.direction === "across"
                     ? wordPos.startCol + index
                     : wordPos.startCol;
-                if (row < newGrid.length && col < newGrid[0].length) {
+                if (
+                  row < newGrid.length &&
+                  col < newGrid[0].length &&
+                  newGrid[row][col] !== "#"
+                ) {
                   newGrid[row][col] = letter.toUpperCase();
                 }
               }
@@ -295,9 +340,11 @@ export function ImpossibleCrossword({
 
   // Check if crossword is already completed
   if (currentCrossword && currentCrossword.userProgress?.completed) {
-    const solvedGrid = Array(currentCrossword.gridSize)
-      .fill(null)
-      .map(() => Array(currentCrossword.gridSize).fill(""));
+    const solvedGrid = currentCrossword.grid
+      ? currentCrossword.grid.map((row: string[]) => [...row])
+      : Array(currentCrossword.gridSize)
+          .fill(null)
+          .map(() => Array(currentCrossword.gridSize).fill(""));
 
     currentCrossword.wordPositions.forEach((pos: WordPosition) => {
       for (let i = 0; i < pos.word.length; i++) {
@@ -307,7 +354,8 @@ export function ImpossibleCrossword({
           pos.direction === "across" ? pos.startCol + i : pos.startCol;
         if (
           solvedGrid[letterRow] &&
-          solvedGrid[letterRow][letterCol] !== undefined
+          solvedGrid[letterRow][letterCol] !== undefined &&
+          solvedGrid[letterRow][letterCol] !== "#"
         ) {
           solvedGrid[letterRow][letterCol] = pos.word[i].toUpperCase();
         }
@@ -332,8 +380,8 @@ export function ImpossibleCrossword({
                 gridTemplateColumns: `repeat(${currentCrossword.gridSize}, 1fr)`,
               }}
             >
-              {solvedGrid.map((row, rowIndex) =>
-                row.map((cell, colIndex) => {
+              {solvedGrid.map((row: string[], rowIndex: number) =>
+                row.map((cell: string, colIndex: number) => {
                   const isWordCell = currentCrossword.wordPositions.some(
                     (pos: WordPosition) => {
                       if (pos.direction === "across") {
@@ -409,9 +457,11 @@ export function ImpossibleCrossword({
 
   // Check if crossword has expired
   if (currentCrossword && Date.now() > currentCrossword.expiresAt) {
-    const solvedGrid = Array(currentCrossword.gridSize)
-      .fill(null)
-      .map(() => Array(currentCrossword.gridSize).fill(""));
+    const solvedGrid = currentCrossword.grid
+      ? currentCrossword.grid.map((row: string[]) => [...row])
+      : Array(currentCrossword.gridSize)
+          .fill(null)
+          .map(() => Array(currentCrossword.gridSize).fill(""));
 
     currentCrossword.wordPositions.forEach((pos: WordPosition) => {
       for (let i = 0; i < pos.word.length; i++) {
@@ -421,7 +471,8 @@ export function ImpossibleCrossword({
           pos.direction === "across" ? pos.startCol + i : pos.startCol;
         if (
           solvedGrid[letterRow] &&
-          solvedGrid[letterRow][letterCol] !== undefined
+          solvedGrid[letterRow][letterCol] !== undefined &&
+          solvedGrid[letterRow][letterCol] !== "#"
         ) {
           solvedGrid[letterRow][letterCol] = pos.word[i].toUpperCase();
         }
@@ -447,8 +498,8 @@ export function ImpossibleCrossword({
                 gridTemplateColumns: `repeat(${currentCrossword.gridSize}, 1fr)`,
               }}
             >
-              {solvedGrid.map((row, rowIndex) =>
-                row.map((cell, colIndex) => {
+              {solvedGrid.map((row: string[], rowIndex: number) =>
+                row.map((cell: string, colIndex: number) => {
                   const isWordCell = currentCrossword.wordPositions.some(
                     (pos: WordPosition) => {
                       if (pos.direction === "across") {
@@ -593,11 +644,11 @@ export function ImpossibleCrossword({
 
     if (possibleWords.length === 0) return;
 
+    // Simple selection: if clicking same word, toggle direction. Otherwise, pick first available.
     let selectedWord = possibleWords[0];
 
-    // If multiple words intersect at this cell, choose based on current selection
     if (possibleWords.length > 1) {
-      // If we already have a word selected at this intersection, cycle to the other one
+      // If current selection is one of the words at this cell, toggle to the other
       const currentWord = possibleWords.find(
         (pos: WordPosition) =>
           pos.clueNumber === selectedClue &&
@@ -605,12 +656,12 @@ export function ImpossibleCrossword({
       );
 
       if (currentWord) {
-        // Cycle to the other word at this intersection
+        // Toggle to the other word
         selectedWord =
           possibleWords.find((pos: WordPosition) => pos !== currentWord) ||
           possibleWords[0];
       } else {
-        // Default to across first, then down
+        // Default preference: across first
         selectedWord =
           possibleWords.find(
             (pos: WordPosition) => pos.direction === "across",
@@ -621,17 +672,22 @@ export function ImpossibleCrossword({
     setSelectedClue(selectedWord.clueNumber);
     setSelectedDirection(selectedWord.direction);
 
-    // Update current word input display
+    // Auto-update word input display (simplified)
+    updateCurrentWordDisplay(selectedWord);
+  };
+
+  // Helper function to update word display
+  const updateCurrentWordDisplay = (wordPos: WordPosition) => {
     const wordLetters: string[] = [];
-    for (let i = 0; i < selectedWord.word.length; i++) {
+    for (let i = 0; i < wordPos.word.length; i++) {
       const letterRow =
-        selectedWord.direction === "across"
-          ? selectedWord.startRow
-          : selectedWord.startRow + i;
+        wordPos.direction === "across"
+          ? wordPos.startRow
+          : wordPos.startRow + i;
       const letterCol =
-        selectedWord.direction === "across"
-          ? selectedWord.startCol + i
-          : selectedWord.startCol;
+        wordPos.direction === "across"
+          ? wordPos.startCol + i
+          : wordPos.startCol;
       wordLetters.push(grid[letterRow]?.[letterCol] || "");
     }
     setCurrentWordInput(wordLetters.join(""));
@@ -647,10 +703,7 @@ export function ImpossibleCrossword({
 
     if (!wordPos) return;
 
-    const wordIndex = currentCrossword.wordPositions.findIndex(
-      (pos: WordPosition) => pos === wordPos,
-    );
-
+    const wordIndex = currentCrossword.wordPositions.indexOf(wordPos);
     if (wordIndex === -1) return;
 
     // Get current letters for this word from the grid
@@ -667,141 +720,97 @@ export function ImpossibleCrossword({
       wordLetters.push(grid[row]?.[col] || "");
     }
 
-    // Check if word is completed
+    // Check if word is completed (all letters filled and correct)
+    const userWord = wordLetters.join("").toLowerCase();
+    const correctWord = wordPos.word.toLowerCase();
     const isCompleted =
-      wordLetters.every((letter) => letter !== "") &&
-      wordLetters.join("").toLowerCase() === wordPos.word.toLowerCase();
+      userWord === correctWord && userWord.length === correctWord.length;
 
-    // Update progress
+    // Provide immediate feedback
+    if (isCompleted) {
+      setLocalCompletedWords((prev) => new Set([...prev, wordIndex]));
+      // Clear the word input to show success
+      setCurrentWordInput("");
+      setSelectedClue(null); // Deselect to show completion
+    }
+
+    // Update progress in backend
     await updateProgress({
       wordIndex,
       letters: wordLetters,
       isCompleted,
     });
 
-    // Immediately update local state for instant visual feedback
-    if (isCompleted) {
-      setLocalCompletedWords((prev) => new Set([...prev, wordIndex]));
-    }
-
     // Check if entire crossword is completed
     if (isCompleted) {
-      const allCompleted = currentCrossword.wordPositions.every(
-        (_: WordPosition, index: number) => {
-          if (index === wordIndex) return true; // This word is now completed
-          return (
-            currentCrossword.userProgress?.currentProgress?.find(
-              (p) => p.wordIndex === index,
-            )?.completed || false
-          );
-        },
-      );
-
-      if (allCompleted) {
-        const timeMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
-        const hintsUsed = currentCrossword.userProgress?.hintsUsed?.length || 0;
-        const cluesUsed = currentCrossword.userProgress?.cluesUsed?.length || 0;
-        const finalScore = calculateScore(timeMinutes, hintsUsed, cluesUsed);
-
-        onGameComplete?.({
-          completed: true,
-          timeMinutes,
-          hintsUsed,
-          cluesUsed,
-          finalScore,
-          usedSecretCode,
-        });
-      }
+      checkCrosswordCompletion(wordIndex);
     }
+  };
 
-    // Clear current word input
-    setCurrentWordInput("");
+  // Helper function to check if crossword is fully completed
+  const checkCrosswordCompletion = (newlyCompletedIndex: number) => {
+    const allCompleted = currentCrossword?.wordPositions.every(
+      (_: WordPosition, index: number) => {
+        if (index === newlyCompletedIndex) return true; // This word is now completed
+        return (
+          currentCrossword.userProgress?.currentProgress?.find(
+            (p) => p.wordIndex === index,
+          )?.completed || localCompletedWords.has(index)
+        );
+      },
+    );
+
+    if (allCompleted) {
+      const timeMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
+      const hintsUsed = currentCrossword?.userProgress?.hintsUsed?.length || 0;
+      const cluesUsed = currentCrossword?.userProgress?.cluesUsed?.length || 0;
+      const finalScore = calculateScore(timeMinutes, hintsUsed, cluesUsed);
+
+      onGameComplete?.({
+        completed: true,
+        timeMinutes,
+        hintsUsed,
+        cluesUsed,
+        finalScore,
+        usedSecretCode,
+      });
+    }
   };
 
   const handleCellInput = async (row: number, col: number, value: string) => {
     if (!currentCrossword || !grid.length) return;
 
-    // Allow empty string for deletion, letters for input
-    if (value !== "" && !value.match(/[a-zA-Z]/)) return;
+    // Don't allow input in blocked cells
+    if (grid[row] && grid[row][col] === "#") return;
 
-    // Admin cheat code: auto-solve when all z's are entered
+    // Simple validation: only allow single letters or empty string (for deletion)
+    if (value !== "" && (!value.match(/^[a-zA-Z]$/) || value.length > 1))
+      return;
+
+    // Admin cheat code handling (simplified)
     if (value.toLowerCase() === "z") {
       const gridCopy = [...grid];
       gridCopy[row][col] = "Z";
       const allZs = gridCopy.every((row) =>
-        row.every((cell) => cell === "Z" || cell === ""),
+        row.every((cell) => cell === "Z" || cell === "" || cell === "#"),
       );
 
       if (
         allZs &&
-        gridCopy.flat().filter((cell) => cell === "Z").length >=
-          currentCrossword.gridSize * 2
+        gridCopy.flat().filter((cell) => cell === "Z").length >= 10
       ) {
-        // Mark that secret code was used
-        setUsedSecretCode(true);
-
-        // Auto-solve the crossword
-        const solvedGrid = Array(currentCrossword.gridSize)
-          .fill(null)
-          .map(() => Array(currentCrossword.gridSize).fill(""));
-
-        currentCrossword.wordPositions.forEach((wordPos: WordPosition) => {
-          for (let i = 0; i < wordPos.word.length; i++) {
-            const letterRow =
-              wordPos.direction === "across"
-                ? wordPos.startRow
-                : wordPos.startRow + i;
-            const letterCol =
-              wordPos.direction === "across"
-                ? wordPos.startCol + i
-                : wordPos.startCol;
-            if (
-              solvedGrid[letterRow] &&
-              solvedGrid[letterRow][letterCol] !== undefined
-            ) {
-              solvedGrid[letterRow][letterCol] = wordPos.word[i].toUpperCase();
-            }
-          }
-        });
-
-        setGrid(solvedGrid);
-
-        // Mark all words as completed
-        for (let i = 0; i < currentCrossword.wordPositions.length; i++) {
-          await updateProgress({
-            wordIndex: i,
-            letters: currentCrossword.wordPositions[i].word.split(""),
-            isCompleted: true,
-            usedSecretCode:
-              i === currentCrossword.wordPositions.length - 1
-                ? true
-                : undefined, // Only set on the last word
-          });
-        }
-
-        // Complete the game
-        const timeMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
-        const hintsUsed = currentCrossword.userProgress?.hintsUsed?.length || 0;
-        const cluesUsed = currentCrossword.userProgress?.cluesUsed?.length || 0;
-        const finalScore = calculateScore(timeMinutes, hintsUsed, cluesUsed);
-
-        onGameComplete?.({
-          completed: true,
-          timeMinutes,
-          hintsUsed,
-          cluesUsed,
-          finalScore,
-          usedSecretCode,
-        });
+        handleAutoSolve();
         return;
       }
     }
 
-    // For normal input, allow letters or empty string (deletion)
-    if (value !== "" && !value.match(/[a-zA-Z]/)) return;
+    // Update the grid immediately for responsive feedback
+    const newGrid = [...grid];
+    newGrid[row][col] = value.toUpperCase();
+    setGrid(newGrid);
 
-    // Find which word this cell belongs to and update grid
-    const wordIndex = currentCrossword.wordPositions.findIndex(
+    // Find the word that contains this cell and auto-select it
+    const containingWord = currentCrossword.wordPositions.find(
       (pos: WordPosition) => {
         if (pos.direction === "across") {
           return (
@@ -819,50 +828,151 @@ export function ImpossibleCrossword({
       },
     );
 
-    if (wordIndex >= 0) {
-      const wordPos = currentCrossword.wordPositions[wordIndex];
-      const newGrid = [...grid];
-      if (newGrid[row] && newGrid[row][col] !== undefined) {
-        newGrid[row][col] = value.toUpperCase();
-        setGrid(newGrid);
+    if (containingWord) {
+      // Auto-select this word for user clarity
+      setSelectedClue(containingWord.clueNumber);
+      setSelectedDirection(containingWord.direction);
 
-        // Update current word input display
+      // Update word display and sync progress
+      updateCurrentWordDisplay(containingWord);
+
+      // Debounced sync with backend and auto-check word completion
+      const wordIndex = currentCrossword.wordPositions.indexOf(containingWord);
+      if (wordIndex >= 0) {
         const wordLetters: string[] = [];
-        for (let i = 0; i < wordPos.word.length; i++) {
+        for (let i = 0; i < containingWord.word.length; i++) {
           const letterRow =
-            wordPos.direction === "across"
-              ? wordPos.startRow
-              : wordPos.startRow + i;
+            containingWord.direction === "across"
+              ? containingWord.startRow
+              : containingWord.startRow + i;
           const letterCol =
-            wordPos.direction === "across"
-              ? wordPos.startCol + i
-              : wordPos.startCol;
+            containingWord.direction === "across"
+              ? containingWord.startCol + i
+              : containingWord.startCol;
           wordLetters.push(newGrid[letterRow]?.[letterCol] || "");
         }
-        setCurrentWordInput(wordLetters.join(""));
 
-        // Set selection to this word
-        setSelectedClue(wordPos.clueNumber);
-        setSelectedDirection(wordPos.direction);
+        // Auto-check if word is complete
+        const userWord = wordLetters.join("").toLowerCase();
+        const correctWord = containingWord.word.toLowerCase();
+        const isCompleted =
+          userWord === correctWord &&
+          userWord.length === correctWord.length &&
+          userWord.trim() !== "";
 
-        // Update progress in database for real-time sync with helper (debounced)
-        debouncedUpdateProgress(wordIndex, wordLetters);
+        if (isCompleted && !localCompletedWords.has(wordIndex)) {
+          // Auto-complete the word!
+          setLocalCompletedWords((prev) => new Set([...prev, wordIndex]));
+          setCurrentWordInput("");
+          setSelectedClue(null); // Deselect to show completion
+
+          // Show completion message
+          setCompletionMessage(`✓ ${correctWord.toUpperCase()} completed!`);
+          setTimeout(() => setCompletionMessage(null), 2000);
+
+          // Update progress as completed
+          updateProgress({
+            wordIndex,
+            letters: wordLetters,
+            isCompleted: true,
+          });
+
+          // Check if entire crossword is completed
+          checkCrosswordCompletion(wordIndex);
+        } else {
+          // Regular progress update
+          debouncedUpdateProgress(wordIndex, wordLetters);
+        }
       }
     }
+  };
+
+  // Simplified auto-solve function
+  const handleAutoSolve = async () => {
+    if (!currentCrossword) return;
+
+    setUsedSecretCode(true);
+    const solvedGrid = currentCrossword.grid
+      ? currentCrossword.grid.map((row: string[]) => [...row])
+      : Array(currentCrossword.gridSize)
+          .fill(null)
+          .map(() => Array(currentCrossword.gridSize).fill(""));
+
+    // Fill in all correct letters
+    currentCrossword.wordPositions.forEach((wordPos: WordPosition) => {
+      for (let i = 0; i < wordPos.word.length; i++) {
+        const letterRow =
+          wordPos.direction === "across"
+            ? wordPos.startRow
+            : wordPos.startRow + i;
+        const letterCol =
+          wordPos.direction === "across"
+            ? wordPos.startCol + i
+            : wordPos.startCol;
+        if (solvedGrid[letterRow] && solvedGrid[letterRow][letterCol] !== "#") {
+          solvedGrid[letterRow][letterCol] = wordPos.word[i].toUpperCase();
+        }
+      }
+    });
+
+    setGrid(solvedGrid);
+
+    // Mark all words as completed
+    for (let i = 0; i < currentCrossword.wordPositions.length; i++) {
+      await updateProgress({
+        wordIndex: i,
+        letters: currentCrossword.wordPositions[i].word.split(""),
+        isCompleted: true,
+        usedSecretCode:
+          i === currentCrossword.wordPositions.length - 1 ? true : undefined,
+      });
+    }
+
+    // Complete the game
+    const timeMinutes = Math.round((Date.now() - startTime) / (1000 * 60));
+    const hintsUsed = currentCrossword.userProgress?.hintsUsed?.length || 0;
+    const cluesUsed = currentCrossword.userProgress?.cluesUsed?.length || 0;
+    const finalScore = calculateScore(timeMinutes, hintsUsed, cluesUsed);
+
+    onGameComplete?.({
+      completed: true,
+      timeMinutes,
+      hintsUsed,
+      cluesUsed,
+      finalScore,
+      usedSecretCode: true,
+    });
   };
 
   const handleRequestHint = async (wordIndex: number) => {
     setLoadingHint(wordIndex);
     try {
-      await requestHint({ wordIndex });
-      // Get the hint from the user progress after it's updated
-      const hintContent =
-        currentCrossword.userProgress?.aiHintsContent?.[wordIndex];
-      if (hintContent) {
-        setCurrentHint(hintContent);
+      const result = await requestHint({ wordIndex });
+
+      if (result.success) {
+        // Get the hint from the user progress or result
+        const hintContent =
+          result.hint ||
+          currentCrossword.userProgress?.aiHintsContent?.[wordIndex];
+        if (hintContent) {
+          setCurrentHint(hintContent);
+          setCurrentHintWordIndex(wordIndex);
+          // Clear any existing clue for this word
+          if (currentClueWordIndex === wordIndex) {
+            setCurrentClue(null);
+            setCurrentClueWordIndex(null);
+          }
+        }
+      } else {
+        // Show error message temporarily
+        alert(
+          result.error ||
+            "Hint not available yet. Try guessing a correct letter first!",
+        );
       }
     } catch (error) {
       console.error("Error requesting hint:", error);
+      alert("Error requesting hint. Please try again.");
     } finally {
       setLoadingHint(null);
     }
@@ -871,15 +981,32 @@ export function ImpossibleCrossword({
   const handleRequestClue = async (wordIndex: number) => {
     setLoadingClue(wordIndex);
     try {
-      await requestClue({ wordIndex });
-      // Get the clue from the user progress after it's updated
-      const clueContent =
-        currentCrossword.userProgress?.aiCluesContent?.[wordIndex];
-      if (clueContent) {
-        setCurrentClue(clueContent);
+      const result = await requestClue({ wordIndex });
+
+      if (result.success) {
+        // Get the clue from the user progress or result
+        const clueContent =
+          result.clue ||
+          currentCrossword.userProgress?.aiCluesContent?.[wordIndex];
+        if (clueContent) {
+          setCurrentClue(clueContent);
+          setCurrentClueWordIndex(wordIndex);
+          // Clear any existing hint for this word
+          if (currentHintWordIndex === wordIndex) {
+            setCurrentHint(null);
+            setCurrentHintWordIndex(null);
+          }
+        }
+      } else {
+        // Show error message temporarily
+        alert(
+          result.error ||
+            "Clue not available yet. Try guessing a correct letter first!",
+        );
       }
     } catch (error) {
       console.error("Error requesting clue:", error);
+      alert("Error requesting clue. Please try again.");
     } finally {
       setLoadingClue(null);
     }
@@ -1132,8 +1259,13 @@ export function ImpossibleCrossword({
       >
         {grid.map((row, rowIndex) =>
           row.map((cell, colIndex) => {
-            const isWordCell = currentCrossword.wordPositions.some(
-              (pos: WordPosition) => {
+            // Check if this cell is blocked (marked with "#")
+            const isBlockedCell = cell === "#";
+
+            // Check if this cell is part of any word (only if not blocked)
+            const isWordCell =
+              !isBlockedCell &&
+              currentCrossword.wordPositions.some((pos: WordPosition) => {
                 if (pos.direction === "across") {
                   return (
                     rowIndex === pos.startRow &&
@@ -1147,8 +1279,7 @@ export function ImpossibleCrossword({
                     rowIndex < pos.startRow + pos.word.length
                   );
                 }
-              },
-            );
+              });
 
             const clueNumber = currentCrossword.wordPositions.find(
               (pos: WordPosition) =>
@@ -1191,39 +1322,45 @@ export function ImpossibleCrossword({
               <div
                 key={`${rowIndex}-${colIndex}`}
                 className={`crossword-cell ${
-                  !isWordCell
+                  isBlockedCell
                     ? "blocked"
-                    : (() => {
-                        const { isCorrectLetter, isCompletedWord } =
-                          getCellCorrectness(rowIndex, colIndex);
-                        if (isCompletedWord) return "correct-word";
-                        if (isCorrectLetter) return "correct-letter";
-                        if (isSelectedWord(rowIndex, colIndex))
-                          return "in-selected-word";
-                        return cell ? "filled" : "empty";
-                      })()
+                    : !isWordCell
+                      ? "blocked" // Cells that are neither blocked nor word cells are also blocked
+                      : (() => {
+                          const { isCorrectLetter, isCompletedWord } =
+                            getCellCorrectness(rowIndex, colIndex);
+                          if (isCompletedWord) return "correct-word";
+                          if (isCorrectLetter) return "correct-letter";
+                          if (isSelectedWord(rowIndex, colIndex))
+                            return "in-selected-word";
+                          return cell && cell !== "#" ? "filled" : "empty";
+                        })()
                 } ${belongsToCompletedWord ? "locked-cell" : ""}`}
                 onClick={() =>
                   isWordCell &&
                   !belongsToCompletedWord &&
+                  !isBlockedCell &&
                   handleCellClick(rowIndex, colIndex)
                 }
               >
-                {clueNumber && (
+                {!isBlockedCell && clueNumber && (
                   <span className="clue-number">{clueNumber}</span>
                 )}
-                {isWordCell && (
+                {isWordCell && !isBlockedCell && (
                   <input
                     type="text"
-                    value={cell}
+                    value={cell === "#" ? "" : cell}
                     onChange={(e) =>
                       !belongsToCompletedWord &&
+                      !isBlockedCell &&
                       handleCellInput(rowIndex, colIndex, e.target.value)
                     }
                     maxLength={1}
                     className="cell-input"
-                    disabled={!isWordCell || belongsToCompletedWord}
-                    readOnly={belongsToCompletedWord}
+                    disabled={
+                      !isWordCell || belongsToCompletedWord || isBlockedCell
+                    }
+                    readOnly={belongsToCompletedWord || isBlockedCell}
                   />
                 )}
               </div>
@@ -1327,6 +1464,13 @@ export function ImpossibleCrossword({
             <h1 className="brutal-text-xl mb-6 font-black">
               DAILY IMPOSSIBLE CROSSWORD
             </h1>
+            {currentCrossword.theme && (
+              <div className="mb-4 p-3 brutal-card theme-display">
+                <div className="font-bold text-sm theme-text">
+                  🎯 TODAY'S THEME: {currentCrossword.theme}
+                </div>
+              </div>
+            )}
             <div className="space-y-4">
               <p
                 className="brutal-text-md font-semibold"
@@ -1367,19 +1511,49 @@ export function ImpossibleCrossword({
             {/* Large Crossword Grid */}
             <div className="flex justify-center">{renderGrid()}</div>
 
-            {/* Submit Word Button */}
-            {selectedClue && currentWordInput.trim() && (
+            {/* Completion Message */}
+            {completionMessage && (
+              <div className="flex justify-center">
+                <div className="brutal-card px-6 py-3 bg-success">
+                  <div
+                    className="font-bold text-lg"
+                    style={{ color: "var(--text-success)" }}
+                  >
+                    {completionMessage}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Word Button - Always show when word is selected */}
+            {selectedClue && (
               <div className="flex justify-center">
                 <button
                   onClick={handleSubmitWord}
-                  className="brutal-button px-8 py-4 font-bold"
+                  className={`brutal-button px-8 py-4 font-bold ${
+                    currentWordInput.trim().length > 0
+                      ? "enabled"
+                      : "opacity-50 cursor-not-allowed"
+                  }`}
                   style={{
-                    background: "var(--bg-success)",
-                    border: "3px solid var(--border-success)",
-                    color: "var(--text-success)",
+                    background:
+                      currentWordInput.trim().length > 0
+                        ? "var(--bg-success)"
+                        : "var(--bg-secondary)",
+                    border:
+                      currentWordInput.trim().length > 0
+                        ? "3px solid var(--border-success)"
+                        : "3px solid var(--border-secondary)",
+                    color:
+                      currentWordInput.trim().length > 0
+                        ? "var(--text-success)"
+                        : "var(--text-secondary)",
                   }}
+                  disabled={currentWordInput.trim().length === 0}
                 >
-                  SUBMIT WORD: {currentWordInput.replace(/\s/g, "·")}
+                  {currentWordInput.trim().length > 0
+                    ? `CHECK WORD: ${currentWordInput.replace(/\s/g, "·")}`
+                    : `CHECK WORD (${selectedClue} ${selectedDirection.toUpperCase()})`}
                 </button>
               </div>
             )}
@@ -1401,40 +1575,70 @@ export function ImpossibleCrossword({
               </div>
             )}
 
-            {/* Hint/Clue Display Below Grid */}
-            {(currentHint || currentClue) && (
-              <div className="brutal-card w-full max-w-2xl">
-                {currentHint && (
-                  <div className="hint-display mb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <strong>💡 Hint:</strong> {currentHint}
+            {/* Hint/Clue Display Below Grid - Only for selected word */}
+            {selectedClue && (currentHint || currentClue) && (
+              <>
+                {currentHint &&
+                  currentHintWordIndex ===
+                    currentCrossword.wordPositions.findIndex(
+                      (pos: WordPosition) =>
+                        pos.clueNumber === selectedClue &&
+                        pos.direction === selectedDirection,
+                    ) && (
+                    <div className="brutal-card w-full max-w-2xl">
+                      <div className="hint-display">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <strong>
+                              💡 Hint for {selectedClue}{" "}
+                              {selectedDirection.toUpperCase()}:
+                            </strong>{" "}
+                            {currentHint}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setCurrentHint(null);
+                              setCurrentHintWordIndex(null);
+                            }}
+                            className="brutal-button text-xs px-2 py-1 ml-2"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setCurrentHint(null)}
-                        className="brutal-button text-xs px-2 py-1 ml-2"
-                      >
-                        ✕
-                      </button>
                     </div>
-                  </div>
-                )}
-                {currentClue && (
-                  <div className="clue-display">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <strong>🔤 Letter Clue:</strong> {currentClue}
+                  )}
+                {currentClue &&
+                  currentClueWordIndex ===
+                    currentCrossword.wordPositions.findIndex(
+                      (pos: WordPosition) =>
+                        pos.clueNumber === selectedClue &&
+                        pos.direction === selectedDirection,
+                    ) && (
+                    <div className="brutal-card w-full max-w-2xl">
+                      <div className="clue-display">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <strong>
+                              🔤 Letter Clue for {selectedClue}{" "}
+                              {selectedDirection.toUpperCase()}:
+                            </strong>{" "}
+                            {currentClue}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setCurrentClue(null);
+                              setCurrentClueWordIndex(null);
+                            }}
+                            className="brutal-button text-xs px-2 py-1 ml-2"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setCurrentClue(null)}
-                        className="brutal-button text-xs px-2 py-1 ml-2"
-                      >
-                        ✕
-                      </button>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+              </>
             )}
 
             {/* Friend Suggestions */}
@@ -1488,6 +1692,13 @@ export function ImpossibleCrossword({
       <div className="md:hidden space-y-6">
         <div className="brutal-card text-center">
           <h1 className="brutal-text-xl mb-4">Daily Impossible Crossword</h1>
+          {currentCrossword.theme && (
+            <div className="mb-4 p-2 brutal-card theme-display">
+              <div className="font-bold text-sm theme-text">
+                🎯 TODAY'S THEME: {currentCrossword.theme}
+              </div>
+            </div>
+          )}
           <p
             className="brutal-text-md mb-4"
             style={{ color: "var(--text-secondary)" }}
@@ -1508,19 +1719,49 @@ export function ImpossibleCrossword({
 
         {renderGrid()}
 
+        {/* Completion Message (Mobile) */}
+        {completionMessage && (
+          <div className="flex justify-center">
+            <div className="brutal-card px-4 py-2 bg-success">
+              <div
+                className="font-bold text-sm"
+                style={{ color: "var(--text-success)" }}
+              >
+                {completionMessage}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Submit Word Button (Mobile) */}
-        {selectedClue && currentWordInput.trim() && (
+        {selectedClue && (
           <div className="flex justify-center">
             <button
               onClick={handleSubmitWord}
-              className="brutal-button px-6 py-3 font-bold"
+              className={`brutal-button px-6 py-3 font-bold ${
+                currentWordInput.trim().length > 0
+                  ? "enabled"
+                  : "opacity-50 cursor-not-allowed"
+              }`}
               style={{
-                background: "var(--bg-success)",
-                border: "3px solid var(--border-success)",
-                color: "var(--text-success)",
+                background:
+                  currentWordInput.trim().length > 0
+                    ? "var(--bg-success)"
+                    : "var(--bg-secondary)",
+                border:
+                  currentWordInput.trim().length > 0
+                    ? "3px solid var(--border-success)"
+                    : "3px solid var(--border-secondary)",
+                color:
+                  currentWordInput.trim().length > 0
+                    ? "var(--text-success)"
+                    : "var(--text-secondary)",
               }}
+              disabled={currentWordInput.trim().length === 0}
             >
-              SUBMIT WORD: {currentWordInput.replace(/\s/g, "·")}
+              {currentWordInput.trim().length > 0
+                ? `CHECK: ${currentWordInput.replace(/\s/g, "·")}`
+                : `CHECK (${selectedClue} ${selectedDirection.toUpperCase()})`}
             </button>
           </div>
         )}
@@ -1542,40 +1783,70 @@ export function ImpossibleCrossword({
           </div>
         )}
 
-        {/* Hint/Clue Display Below Grid (Mobile) */}
-        {(currentHint || currentClue) && (
-          <div className="brutal-card">
-            {currentHint && (
-              <div className="hint-display mb-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <strong>💡 Hint:</strong> {currentHint}
+        {/* Hint/Clue Display Below Grid (Mobile) - Only for selected word */}
+        {selectedClue && (currentHint || currentClue) && (
+          <>
+            {currentHint &&
+              currentHintWordIndex ===
+                currentCrossword.wordPositions.findIndex(
+                  (pos: WordPosition) =>
+                    pos.clueNumber === selectedClue &&
+                    pos.direction === selectedDirection,
+                ) && (
+                <div className="brutal-card">
+                  <div className="hint-display">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <strong>
+                          💡 Hint for {selectedClue}{" "}
+                          {selectedDirection.toUpperCase()}:
+                        </strong>{" "}
+                        {currentHint}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCurrentHint(null);
+                          setCurrentHintWordIndex(null);
+                        }}
+                        className="brutal-button text-xs px-2 py-1 ml-2"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setCurrentHint(null)}
-                    className="brutal-button text-xs px-2 py-1 ml-2"
-                  >
-                    ✕
-                  </button>
                 </div>
-              </div>
-            )}
-            {currentClue && (
-              <div className="clue-display">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <strong>🔤 Letter Clue:</strong> {currentClue}
+              )}
+            {currentClue &&
+              currentClueWordIndex ===
+                currentCrossword.wordPositions.findIndex(
+                  (pos: WordPosition) =>
+                    pos.clueNumber === selectedClue &&
+                    pos.direction === selectedDirection,
+                ) && (
+                <div className="brutal-card">
+                  <div className="clue-display">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <strong>
+                          🔤 Letter Clue for {selectedClue}{" "}
+                          {selectedDirection.toUpperCase()}:
+                        </strong>{" "}
+                        {currentClue}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCurrentClue(null);
+                          setCurrentClueWordIndex(null);
+                        }}
+                        className="brutal-button text-xs px-2 py-1 ml-2"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setCurrentClue(null)}
-                    className="brutal-button text-xs px-2 py-1 ml-2"
-                  >
-                    ✕
-                  </button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+          </>
         )}
 
         {/* Friend Suggestions */}
@@ -1653,13 +1924,52 @@ function ClueItem({
     <div
       className={`clue-item ${isSelected ? "selected" : ""} ${
         clueData.completed ? "completed" : ""
-      }`}
+      } cursor-pointer hover:bg-gray-100 transition-colors`}
       onClick={onSelect}
+      style={{
+        background: isSelected ? "var(--bg-accent)" : "transparent",
+        border: isSelected
+          ? "2px solid var(--border-accent)"
+          : "2px solid transparent",
+        padding: "12px",
+        borderRadius: "8px",
+        marginBottom: "8px",
+      }}
     >
       <div className="flex justify-between items-start">
         <div className="flex-1">
-          <span className="font-bold">{clueData.clueNumber}.</span>{" "}
-          {clueData.clue}
+          <span
+            className="font-bold text-lg"
+            style={{
+              color: isSelected ? "var(--text-accent)" : "var(--text-primary)",
+            }}
+          >
+            {clueData.clueNumber}.
+          </span>{" "}
+          <span
+            style={{
+              color: isSelected ? "var(--text-accent)" : "var(--text-primary)",
+            }}
+          >
+            {clueData.clue}
+          </span>
+          {isSelected && (
+            <div
+              className="text-xs mt-1"
+              style={{ color: "var(--text-accent)" }}
+            >
+              ▶ SELECTED • {clueData.word.length} letters •{" "}
+              {clueData.direction.toUpperCase()}
+            </div>
+          )}
+          {clueData.completed && (
+            <div
+              className="text-xs mt-1"
+              style={{ color: "var(--text-success)" }}
+            >
+              ✓ COMPLETED
+            </div>
+          )}
         </div>
         <div className="flex gap-2 ml-4">
           <button
@@ -1669,8 +1979,9 @@ function ClueItem({
             }}
             disabled={loadingHint}
             className="brutal-button secondary text-xs px-2 py-1"
+            title="Get an AI hint for this word"
           >
-            {loadingHint ? "..." : "Hint"}
+            {loadingHint ? "..." : "💡 Hint"}
           </button>
           <button
             onClick={(e) => {
@@ -1679,8 +1990,9 @@ function ClueItem({
             }}
             disabled={loadingClue}
             className="brutal-button secondary text-xs px-2 py-1"
+            title="Get an AI clue for this word"
           >
-            {loadingClue ? "..." : "Clue"}
+            {loadingClue ? "..." : "🔤 Clue"}
           </button>
         </div>
       </div>

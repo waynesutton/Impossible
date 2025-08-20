@@ -21,6 +21,8 @@ export const getCurrentCrossword = query({
       words: v.array(v.string()),
       clues: v.array(v.string()),
       gridSize: v.number(),
+      grid: v.optional(v.array(v.array(v.string()))), // Include grid data
+      theme: v.optional(v.string()), // Include theme
       wordPositions: v.array(
         v.object({
           word: v.string(),
@@ -84,6 +86,8 @@ export const getCurrentCrossword = query({
       words: puzzle.words,
       clues: puzzle.clues,
       gridSize: puzzle.gridSize,
+      grid: puzzle.grid, // Include the complete grid with blocked cells
+      theme: puzzle.theme, // Include the daily theme
       wordPositions: puzzle.wordPositions,
       expiresAt: puzzle.expiresAt,
       userProgress: userProgress
@@ -228,6 +232,37 @@ export const updateCrosswordProgress = mutation({
             args.usedSecretCode || userProgress.usedSecretCode || false,
         });
       }
+
+      // Auto-generate hints/clues in background when a correct letter is detected
+      const word = puzzle.words[args.wordIndex];
+      if (word && args.letters.length > 0) {
+        // Check if this update includes any new correct letters
+        let hasNewCorrectLetter = false;
+        for (let i = 0; i < args.letters.length; i++) {
+          if (
+            args.letters[i] &&
+            args.letters[i].toLowerCase() === word[i].toLowerCase()
+          ) {
+            hasNewCorrectLetter = true;
+            break;
+          }
+        }
+
+        if (hasNewCorrectLetter) {
+          // Schedule background hint generation if not already exists
+          if (!userProgress.aiHintsContent[args.wordIndex.toString()]) {
+            await ctx.scheduler.runAfter(
+              100,
+              internal.crossword.generateCrosswordHint,
+              {
+                userId,
+                puzzleId: puzzle.puzzleId,
+                wordIndex: args.wordIndex,
+              },
+            );
+          }
+        }
+      }
     }
 
     return {
@@ -238,7 +273,7 @@ export const updateCrosswordProgress = mutation({
   },
 });
 
-// Request AI hint for specific word
+// Request AI hint for specific word - only available after correct letter guessed
 export const requestCrosswordHint = mutation({
   args: {
     wordIndex: v.number(),
@@ -246,6 +281,7 @@ export const requestCrosswordHint = mutation({
   returns: v.object({
     success: v.boolean(),
     hint: v.optional(v.string()),
+    error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdForMutation(ctx);
@@ -265,30 +301,48 @@ export const requestCrosswordHint = mutation({
       .first();
 
     if (!userProgress) {
-      // Create initial user progress if it doesn't exist
-      const newProgressId = await ctx.db.insert("userCrosswordAttempts", {
-        userId,
-        puzzleId: puzzle.puzzleId,
-        startedAt: Date.now(),
-        lastActiveAt: Date.now(),
-        completed: false,
-        currentProgress: [],
-        hintsUsed: [],
-        cluesUsed: [],
-        aiHintsContent: {},
-        aiCluesContent: {},
-        totalHintsUsed: 0,
-        totalCluesUsed: 0,
-        suggestionsReceived: 0,
-      });
+      return {
+        success: false,
+        error: "No progress found for this crossword",
+      };
+    }
 
-      // Get the newly created progress
-      const newProgress = await ctx.db.get(newProgressId);
-      if (!newProgress) {
-        throw new Error("Failed to create user progress");
+    // Check if user has guessed at least one correct letter in this word
+    const wordProgress = userProgress.currentProgress?.find(
+      (p) => p.wordIndex === args.wordIndex,
+    );
+    if (!wordProgress) {
+      return {
+        success: false,
+        error: "You need to guess at least one correct letter first",
+      };
+    }
+
+    const word = puzzle.words[args.wordIndex];
+    if (!word) {
+      return {
+        success: false,
+        error: "Invalid word index",
+      };
+    }
+
+    // Check if at least one letter is correct
+    let hasCorrectLetter = false;
+    for (let i = 0; i < wordProgress.letters.length; i++) {
+      if (
+        wordProgress.letters[i] &&
+        wordProgress.letters[i].toLowerCase() === word[i].toLowerCase()
+      ) {
+        hasCorrectLetter = true;
+        break;
       }
+    }
 
-      userProgress = newProgress;
+    if (!hasCorrectLetter) {
+      return {
+        success: false,
+        error: "You need to guess at least one correct letter first",
+      };
     }
 
     // Check if hint already exists
@@ -313,7 +367,7 @@ export const requestCrosswordHint = mutation({
   },
 });
 
-// Request AI clue (reveal letter) for specific word
+// Request AI clue (reveal letter) for specific word - only available after correct letter guessed
 export const requestCrosswordClue = mutation({
   args: {
     wordIndex: v.number(),
@@ -321,6 +375,7 @@ export const requestCrosswordClue = mutation({
   returns: v.object({
     success: v.boolean(),
     clue: v.optional(v.string()),
+    error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdForMutation(ctx);
@@ -340,30 +395,48 @@ export const requestCrosswordClue = mutation({
       .first();
 
     if (!userProgress) {
-      // Create initial user progress if it doesn't exist
-      const newProgressId = await ctx.db.insert("userCrosswordAttempts", {
-        userId,
-        puzzleId: puzzle.puzzleId,
-        startedAt: Date.now(),
-        lastActiveAt: Date.now(),
-        completed: false,
-        currentProgress: [],
-        hintsUsed: [],
-        cluesUsed: [],
-        aiHintsContent: {},
-        aiCluesContent: {},
-        totalHintsUsed: 0,
-        totalCluesUsed: 0,
-        suggestionsReceived: 0,
-      });
+      return {
+        success: false,
+        error: "No progress found for this crossword",
+      };
+    }
 
-      // Get the newly created progress
-      const newProgress = await ctx.db.get(newProgressId);
-      if (!newProgress) {
-        throw new Error("Failed to create user progress");
+    // Check if user has guessed at least one correct letter in this word
+    const wordProgress = userProgress.currentProgress?.find(
+      (p) => p.wordIndex === args.wordIndex,
+    );
+    if (!wordProgress) {
+      return {
+        success: false,
+        error: "You need to guess at least one correct letter first",
+      };
+    }
+
+    const word = puzzle.words[args.wordIndex];
+    if (!word) {
+      return {
+        success: false,
+        error: "Invalid word index",
+      };
+    }
+
+    // Check if at least one letter is correct
+    let hasCorrectLetter = false;
+    for (let i = 0; i < wordProgress.letters.length; i++) {
+      if (
+        wordProgress.letters[i] &&
+        wordProgress.letters[i].toLowerCase() === word[i].toLowerCase()
+      ) {
+        hasCorrectLetter = true;
+        break;
       }
+    }
 
-      userProgress = newProgress;
+    if (!hasCorrectLetter) {
+      return {
+        success: false,
+        error: "You need to guess at least one correct letter first",
+      };
     }
 
     // Check if clue already exists
@@ -375,11 +448,6 @@ export const requestCrosswordClue = mutation({
     }
 
     // Generate random letter clue
-    const word = puzzle.words[args.wordIndex];
-    if (!word) {
-      throw new Error("Invalid word index");
-    }
-
     // Pick a random position to reveal
     const randomIndex = Math.floor(Math.random() * word.length);
     const letter = word[randomIndex].toUpperCase();
@@ -546,6 +614,7 @@ export const createCrosswordPuzzle = internalMutation({
     clues: v.array(v.string()),
     gridSize: v.number(),
     grid: v.array(v.array(v.string())),
+    theme: v.optional(v.string()),
     wordPositions: v.array(
       v.object({
         word: v.string(),
@@ -568,6 +637,7 @@ export const createCrosswordPuzzle = internalMutation({
       clues: args.clues,
       gridSize: args.gridSize,
       grid: args.grid,
+      theme: args.theme,
       wordPositions: args.wordPositions,
       generatedAt: args.generatedAt,
       expiresAt: args.expiresAt,
@@ -699,41 +769,58 @@ export const generateDailyCrossword = internalAction({
           messages: [
             {
               role: "system",
-              content: `You are a professional crossword puzzle generator. Create a proper 7x7 crossword puzzle following traditional crossword rules.
+              content: `You are a professional crossword puzzle generator. Create a proper 7x7 crossword puzzle following traditional American-style crossword rules with a daily theme.
 
 CROSSWORD RULES (based on standard American-style crosswords):
-1. Grid must have black/blocked squares (~15-20% of grid) to separate entries
+1. Grid must have black/blocked squares (~20-25% of grid) to separate entries
 2. All words must be at least 3 letters long
 3. Words must intersect properly - every letter should be "checked" (part of both across and down words where possible)
-4. Use common English words only, avoid proper nouns
+4. Use common English words, mix of contemporary and classic references
 5. Grid should have 180-degree rotational symmetry
 6. All white (word) squares should be connected
-7. Create challenging but fair clues
+7. Create witty, engaging clues with humor and pop culture references
+8. Include a clear daily theme that connects several answers
+
+DAILY THEME GUIDELINES:
+- Choose from themes like: Pop Culture, Science & Nature, Food & Cooking, Travel & Places, Sports & Games, History & Literature, Technology & Modern Life, Music & Arts, Movies & TV, or mix themes creatively
+- 3-4 theme answers should relate to the chosen theme
+- Theme answers can be longer (4-6 letters) and should be placed prominently
+- Non-theme answers provide variety and fill
 
 STRUCTURE:
 - Total grid: 7x7 (49 squares)
-- Approximately 8-12 black squares
-- 6-8 words total (mix of across and down)
-- Words should be 3-6 letters long
-- Make words moderately challenging to guess
+- Approximately 10-12 black squares (more structure for better crossword)
+- 8-12 words total (mix of across and down)
+- Theme words: 3-4 words (4-6 letters each)
+- Fill words: 4-8 words (3-5 letters each)
+- Make clues witty and contemporary but fair
+
+CLUE STYLE:
+- Use humor and wordplay where appropriate (mark with ?)
+- Include contemporary references (apps, memes, recent culture)
+- Mix classic and modern references for broad appeal
+- Keep definitions clear but entertaining
 
 RESPONSE FORMAT (exact JSON):
 {
-  "words": ["EXAMPLE", "WORD", "LIST"],
-  "clues": ["Example clue 1", "Example clue 2", "Example clue 3"],
+  "theme": "Today's Theme Name",
+  "words": ["THEME1", "THEME2", "FILL1", "FILL2"],
+  "clues": ["Witty clue for theme word 1", "Pop culture clue 2", "Fill clue 1", "Fill clue 2"],
   "positions": [
-    {"word": "EXAMPLE", "startRow": 0, "startCol": 0, "direction": "across", "clueNumber": 1},
-    {"word": "WORD", "startRow": 2, "startCol": 1, "direction": "down", "clueNumber": 2}
+    {"word": "THEME1", "startRow": 0, "startCol": 0, "direction": "across", "clueNumber": 1},
+    {"word": "THEME2", "startRow": 2, "startCol": 1, "direction": "down", "clueNumber": 2}
   ],
   "blockedCells": [
     {"row": 1, "col": 3},
+    {"row": 1, "col": 4},
+    {"row": 5, "col": 2},
     {"row": 5, "col": 3}
   ]
 }`,
             },
             {
               role: "user",
-              content: `Generate a simple crossword puzzle for user ${args.userId} on date ${args.dateString}. Keep it simple and fun!`,
+              content: `Generate a themed crossword puzzle for user ${args.userId} on date ${args.dateString}. Create a fun daily theme and make it engaging for players aged 20-50+ with witty clues and contemporary references!`,
             },
           ],
           temperature: 0.7,
@@ -795,11 +882,12 @@ RESPONSE FORMAT (exact JSON):
         dateString: args.dateString,
         words: puzzleData.words,
         clues: puzzleData.clues,
-        gridSize: gridSize, // Now 7x7
+        gridSize: gridSize, // 7x7
         grid,
         wordPositions: puzzleData.positions,
         generatedAt: Date.now(),
         expiresAt,
+        theme: puzzleData.theme || "Daily Challenge", // Store the theme
       });
 
       console.log("AI-generated crossword puzzle stored successfully!");
@@ -807,7 +895,7 @@ RESPONSE FORMAT (exact JSON):
         puzzleId,
         words: puzzleData.words,
         clues: puzzleData.clues,
-        gridSize: 5,
+        gridSize: gridSize, // Fixed: was returning 5, now returns actual 7
         wordPositions: puzzleData.positions,
         expiresAt,
       };

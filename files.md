@@ -18,6 +18,10 @@
 
 - **HelperGame.tsx**: Friend helper interface for collaborative gameplay. Allows invited friends to view the game state, submit word suggestions (up to 3), and track the main player's progress in real-time.
 
+- **ImpossibleCrossword.tsx**: Main crossword puzzle component featuring 7x7 grid layout, real-time progress tracking, AI hint/clue generation, friend collaboration with unlimited suggestions, grid state management, word completion detection, and 24-hour puzzle persistence with expiration handling.
+
+- **CrosswordHelper.tsx**: Friend collaboration interface for crossword puzzles. Displays live crossword grid state, allows unlimited word suggestions for specific clue positions, shows real-time solver progress, and handles invite-based joining for collaborative puzzle solving.
+
 - **ThemeSwitcher.tsx**: Theme management component supporting three distinct visual modes: Neobrutalism (default bold design), Original (clean minimal), and Dark mode. Persists theme preferences to localStorage.
 
 ### Authentication Components
@@ -40,7 +44,7 @@
 
 - **main.tsx**: React application bootstrap file that sets up the Convex provider, renders the root App component, and initializes the React application.
 
-- **index.css**: Comprehensive CSS system with CSS variables for theming, Neobrutalism design components (brutal-\* classes), responsive design, and custom styling for game elements.
+- **index.css**: Comprehensive CSS system with CSS variables for theming, Neobrutalism design components (brutal-\* classes), responsive design, custom styling for game elements, and crossword-specific grid layouts. Contains crossword grid styles starting at line 1324 with responsive 7x7 grid layout, cell styling, theme-specific overrides, and mobile optimization for crossword gameplay.
 
 ## Backend Functions (`convex/`)
 
@@ -67,6 +71,19 @@
   - Rematch system for competitive replay
   - Challenge battle history tracking and analytics
 
+- **crossword.ts**: Crossword mode logic for daily AI-generated puzzle management. Includes:
+
+  - Daily 7x7 crossword puzzle generation using GPT-4o-mini AI
+  - Traditional crossword structure with proper word intersections and symmetry
+  - 24-hour puzzle persistence with automatic expiration
+  - Real-time progress tracking and grid state synchronization
+  - AI hint generation for contextual word assistance
+  - Letter clue generation for specific position reveals
+  - Friend collaboration system with unlimited suggestions
+  - Crossword invitation management and helper integration
+  - Completion scoring based on time, hints used, and assistance received
+  - Grid layout validation and word position management
+
 - **schema.ts**: Complete database schema definitions using Convex validators. Defines tables for:
 
   **Single Player Mode:**
@@ -86,6 +103,13 @@
   - `challengeInvites`: Challenge invitation links and acceptance tracking
   - `rematchRequests`: Rematch system for competitive replay between same opponents
 
+  **Crossword Mode:**
+
+  - `crosswordPuzzles`: Daily AI-generated 7x7 crossword puzzles with words, clues, grid layout, and word positions
+  - `userCrosswordAttempts`: Progress tracking across 24-hour puzzle sessions with hints, clues, and completion status
+  - `crosswordInvites`: Shareable invitation links for friend collaboration on specific puzzles
+  - `crosswordSuggestions`: Unlimited friend suggestions for specific crossword word positions
+
   **Authentication:**
 
   - Clerk user integration with Convex authentication system
@@ -100,12 +124,13 @@
   - Single-player winners hall of fame (successful games only)
   - Recent single-player plays (all games with appropriate data privacy)
   - Challenge battle results and head-to-head competition history
-  - Cross-mode analytics combining single-player and challenge statistics
-  - Event tracking for homepage views, game starts, and challenge creations
+  - Crossword completion results and daily puzzle leaderboards
+  - Cross-mode analytics combining single-player, challenge, and crossword statistics
+  - Event tracking for homepage views, game starts, challenge creations, and crossword completions
   - Player name anonymization and display logic for both authenticated and anonymous users
-  - Authentication-aware score persistence and profile statistics
+  - Authentication-aware score persistence and profile statistics across all game modes
   - Admin dashboard analytics with role-based access control
-  - User personal statistics and game history queries
+  - User personal statistics and game history queries for all modes
   - Comprehensive moderation and deletion tracking
 
 ### Configuration Files
@@ -162,10 +187,16 @@ The following files contain AI-related functionality:
 - `convex/challengeBattle.ts`: AI word generation for synchronized 1v1 battles
 - `src/ChallengeMode.tsx`: AI hint integration for competitive gameplay
 
+### Crossword Mode
+
+- `convex/crossword.ts`: Comprehensive AI integration for daily crossword generation using GPT-4o-mini (lines 658-831), AI hint generation for contextual word assistance (lines 833-902), crossword puzzle structure creation with traditional rules and symmetry
+- `src/ImpossibleCrossword.tsx`: AI hint request handling, display logic for crossword-specific hints and clues, real-time AI assistance integration
+
 ### Configuration
 
 - Environment variables in Convex deployment for OpenAI API key management
-- Consistent AI prompting across both single-player and challenge modes
+- Consistent AI prompting across single-player, challenge, and crossword modes
+- Crossword-specific AI prompts for puzzle generation and contextual hint creation
 
 ## Authentication Integration Points
 
@@ -178,7 +209,9 @@ The following areas include comprehensive Clerk authentication integration:
 - `src/components/AuthButton.tsx`: Clerk authentication UI integration
 - `src/components/MyScores.tsx`: Personal score history and management for authenticated users
 - `src/components/ProtectedRoute.tsx`: Route protection wrapper for authenticated features
-- `src/Leaderboard.tsx`: Authenticated vs anonymous score display logic with enhanced features
+- `src/Leaderboard.tsx`: Authenticated vs anonymous score display logic with enhanced features across all game modes
+- `src/ImpossibleCrossword.tsx`: Authentication-aware crossword progress persistence and personal puzzle history
+- `src/CrosswordHelper.tsx`: Authentication integration for crossword collaboration and helper tracking
 
 ### Backend Functions
 
@@ -186,7 +219,8 @@ The following areas include comprehensive Clerk authentication integration:
 - `convex/auth/helpers.ts`: Authentication utilities and role management
 - `convex/game.ts`: Authentication-aware score persistence and user association
 - `convex/challengeBattle.ts`: Authenticated challenge creation, history tracking, and results
-- `convex/leaderboard.ts`: Role-based analytics access, personal statistics, and admin dashboard data
+- `convex/crossword.ts`: Authentication-aware crossword puzzle generation, progress tracking, and completion history
+- `convex/leaderboard.ts`: Role-based analytics access, personal statistics, and admin dashboard data across all game modes
 
 ### Key Principles
 

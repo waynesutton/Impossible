@@ -175,6 +175,7 @@ const applicationTables = {
     clues: v.array(v.string()), // Corresponding clues for each word
     gridSize: v.number(), // Grid dimensions (7x7 default)
     grid: v.optional(v.array(v.array(v.string()))), // 2D array representing crossword grid (optional for migration)
+    theme: v.optional(v.string()), // Daily theme for the crossword puzzle
     wordPositions: v.array(
       v.object({
         word: v.string(),

@@ -1737,6 +1737,60 @@ body {
   }
 }
 
+/* Theme Display Box - Guaranteed high contrast across all themes */
+.theme-display {
+  background: var(--bg-info) !important;
+  border: 3px solid var(--border-color) !important;
+  box-shadow: var(--shadow-small) !important;
+}
+
+.theme-text {
+  color: var(--text-info) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Theme-specific overrides for maximum contrast */
+:root .theme-display {
+  background: #74b9ff !important;
+  border-color: #2d3436 !important;
+}
+
+:root .theme-text {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="original"] .theme-display {
+  background: #3b82f6 !important;
+  border-color: #1e40af !important;
+}
+
+[data-theme="original"] .theme-text {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="ghibli"] .theme-display {
+  background: #5a9bd4 !important;
+  border-color: #2e5266 !important;
+}
+
+[data-theme="ghibli"] .theme-text {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .theme-display {
+  background: #cc5500 !important;
+  border-color: #8b8680 !important;
+  box-shadow: 0 4px 8px rgba(204, 85, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .theme-text {
+  color: #f5f0e8 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 /* Very small mobile screens */
 @media (max-width: 480px) {
   .crossword-grid {
