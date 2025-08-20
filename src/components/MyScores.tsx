@@ -19,6 +19,9 @@ export function MyScores() {
   const [challengesCursor, setChallengesCursor] = useState<string | undefined>(
     undefined,
   );
+  const [crosswordsCursor, setCrosswordsCursor] = useState<string | undefined>(
+    undefined,
+  );
 
   // State for delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -59,6 +62,15 @@ export function MyScores() {
       ? "skip"
       : {
           cursor: challengesCursor,
+          limit: 3,
+        },
+  );
+
+  const crosswordsData = useQuery(
+    api.crossword.getUserCrosswordHistory,
+    authIsLoading || !userIsAuthenticated
+      ? "skip"
+      : {
           limit: 3,
         },
   );
@@ -450,6 +462,71 @@ export function MyScores() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-4"></div>
             <p style={{ color: "var(--text-secondary)" }}>
               Loading challenge history...
+            </p>
+          </div>
+        )}
+
+        {/* Crossword History Section */}
+        {crosswordsData ? (
+          <div className="brutal-card">
+            <h2 className="brutal-text-lg mb-4">Recent Crosswords</h2>
+            {crosswordsData.length > 0 ? (
+              <div className="space-y-2">
+                {crosswordsData.map((crossword) => (
+                  <div
+                    key={crossword._id}
+                    className="p-3 border-2 border-gray-300 space-y-2"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-bold">Daily Crossword</span>
+                        <span
+                          className="text-sm ml-2"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          {new Date(crossword.completedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-green-600">
+                          {crossword.completed ? "COMPLETED" : "IN PROGRESS"}
+                        </div>
+                        <div className="text-sm">
+                          {crossword.totalTimeMinutes}min • Score:{" "}
+                          {crossword.finalScore}
+                        </div>
+                        <div
+                          className="text-xs"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          {crossword.hintsUsed} hints • {crossword.cluesUsed}{" "}
+                          clues
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="mb-4" style={{ color: "var(--text-secondary)" }}>
+                  No crosswords completed yet!
+                </p>
+                <p
+                  className="text-sm"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Complete your daily crossword to see your solving history
+                  here.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="brutal-card text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800 mx-auto mb-4"></div>
+            <p style={{ color: "var(--text-secondary)" }}>
+              Loading crossword history...
             </p>
           </div>
         )}

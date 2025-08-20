@@ -325,6 +325,18 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
     }
   };
 
+  const handleStartCrossword = () => {
+    // Navigate to crossword mode - this will be handled by parent App component
+    if (onGameComplete) {
+      onGameComplete({
+        won: false,
+        word: currentGame?.word || "",
+        attempts: currentGame?.attempts || 0,
+        startCrossword: true, // Flag to indicate crossword start
+      });
+    }
+  };
+
   if (!currentGame) {
     return (
       <div className="brutal-card text-center">
@@ -702,28 +714,49 @@ export function ImpossibleGame({ onGameComplete }: ImpossibleGameProps) {
             style={{ borderColor: "var(--border-color)" }}
           />
 
-          <button
-            onClick={handleStartChallenge}
-            className="brutal-button warning px-6 py-2"
-            style={{
-              background: "var(--bg-warning)",
-              border: "3px solid var(--border-warning)",
-              color: "var(--text-warning)",
-            }}
-          >
-            Challenge a Friend
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button
+              onClick={handleStartChallenge}
+              className="brutal-button warning px-6 py-2"
+              style={{
+                background: "var(--bg-warning)",
+                border: "3px solid var(--border-warning)",
+                color: "var(--text-warning)",
+              }}
+            >
+              Challenge a Friend
+            </button>
+
+            <button
+              onClick={handleStartCrossword}
+              className="brutal-button secondary px-6 py-2"
+              style={{
+                background: "var(--bg-info)",
+                border: "3px solid var(--border-info)",
+                color: "var(--text-info)",
+              }}
+            >
+              Impossible Crossword
+            </button>
+          </div>
 
           {/* Descriptive text */}
-          <p
-            className="text-sm mt-3 px-4"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            <strong>
-              Start a new game and battle your friends in head-to-head to guess
-              the impossible word.
-            </strong>
-          </p>
+          <div className="space-y-2">
+            <p
+              className="text-sm px-4"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <strong>Challenge a Friend:</strong> Start a new game and battle
+              your friends in head-to-head to guess the impossible word.
+            </p>
+            <p
+              className="text-sm px-4"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <strong>Impossible Crossword:</strong> Solve your daily crossword
+              puzzle with unlimited friend help and AI hints.
+            </p>
+          </div>
         </div>
       )}
     </div>

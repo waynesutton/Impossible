@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as auth_helpers from "../auth/helpers.js";
 import type * as challengeBattle from "../challengeBattle.js";
+import type * as crossword from "../crossword.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
 import type * as leaderboard from "../leaderboard.js";
@@ -31,6 +32,7 @@ import type * as router from "../router.js";
 declare const fullApi: ApiFromModules<{
   "auth/helpers": typeof auth_helpers;
   challengeBattle: typeof challengeBattle;
+  crossword: typeof crossword;
   game: typeof game;
   http: typeof http;
   leaderboard: typeof leaderboard;

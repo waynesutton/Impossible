@@ -26,13 +26,24 @@ interface ChallengeCompletionData {
 interface LeaderboardProps {
   gameCompletionData?: GameCompletionData | null;
   challengeCompletionData?: ChallengeCompletionData | null;
+  crosswordCompletionData?: {
+    completed: boolean;
+    timeMinutes: number;
+    hintsUsed: number;
+    cluesUsed: number;
+    finalScore: number;
+    usedSecretCode: boolean;
+  } | null;
   onStartNewGame?: () => void;
+  onNavigateToCrossword?: () => void;
 }
 
 export function Leaderboard({
   gameCompletionData,
   challengeCompletionData,
+  crosswordCompletionData,
   onStartNewGame,
+  onNavigateToCrossword,
 }: LeaderboardProps) {
   const { isLoading: authIsLoading, isAuthenticated } = useConvexAuth();
   const { user } = useUser();
@@ -46,6 +57,13 @@ export function Leaderboard({
     { limit: 3 },
   );
   const challengeStats = useQuery(api.challengeBattle.getChallengeBattleStats);
+  const crosswordLeaderboard = useQuery(
+    api.leaderboard.getCrosswordLeaderboard,
+  );
+  const crosswordCompletions = useQuery(
+    api.leaderboard.getCrosswordCompletions,
+    { limit: 10 },
+  );
   const updateDisplayName = useMutation(api.game.updateDisplayName);
 
   // Admin mutations
@@ -81,6 +99,7 @@ export function Leaderboard({
   >(undefined);
   const [allChallengeBattles, setAllChallengeBattles] = useState<any[]>([]);
   const [loadingMoreChallenges, setLoadingMoreChallenges] = useState(false);
+  const [crosswordDisplayCount, setCrosswordDisplayCount] = useState(3);
   // State for managing Winners Hall of Fame pagination by attempt count
   const [attemptDisplayCounts, setAttemptDisplayCounts] = useState<
     Record<number, number>
@@ -89,6 +108,11 @@ export function Leaderboard({
     2: 3,
     3: 3,
   });
+
+  // Tab state for leaderboard sections
+  const [activeTab, setActiveTab] = useState<
+    "normal" | "challenges" | "crosswords"
+  >("normal");
 
   // Load initial recent plays (10)
   const recentPlaysData = useQuery(api.leaderboard.getRecentPlays, {
@@ -179,6 +203,11 @@ export function Leaderboard({
       ...prev,
       [attemptCount]: prev[attemptCount] + 3,
     }));
+  };
+
+  // Load more crossword completions
+  const loadMoreCrosswordCompletions = () => {
+    setCrosswordDisplayCount((prev) => prev + 3);
   };
 
   const handleNameSubmit = async (e: React.FormEvent) => {
@@ -494,6 +523,57 @@ export function Leaderboard({
         </div>
       )}
 
+      {/* Crossword Completion Section */}
+      {crosswordCompletionData && crosswordCompletionData.completed && (
+        <div className="brutal-card text-center">
+          <div className="space-y-4">
+            <div
+              className="brutal-text-xl"
+              style={{ color: "var(--bg-success)" }}
+            >
+              🎉 Crossword Complete!
+            </div>
+            <p
+              className="brutal-text-md"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              You solved today's impossible crossword!
+            </p>
+            <div className="brutal-badge text-lg">
+              Score: {crosswordCompletionData.finalScore}
+            </div>
+            <div className="flex justify-center gap-6 text-sm">
+              <span style={{ color: "var(--text-secondary)" }}>
+                Time: {crosswordCompletionData.timeMinutes} minutes
+              </span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                Hints: {crosswordCompletionData.hintsUsed}
+              </span>
+              <span style={{ color: "var(--text-secondary)" }}>
+                Clues: {crosswordCompletionData.cluesUsed}
+              </span>
+            </div>
+
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={onNavigateToCrossword}
+                className="brutal-button px-6 py-3"
+              >
+                Play Another Crossword
+              </button>
+              {onStartNewGame && (
+                <button
+                  onClick={onStartNewGame}
+                  className="brutal-button secondary px-6 py-3"
+                >
+                  Play Regular Game
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="brutal-card text-center">
         <h1
           className="brutal-text-xl mb-4"
@@ -776,6 +856,132 @@ export function Leaderboard({
               >
                 Load More Cheaters ({leaderboard.shameGames.length - 5} more)
               </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Crossword Solved Section */}
+      {crosswordCompletions && crosswordCompletions.length > 0 && (
+        <div className="space-y-6">
+          <div className="brutal-card text-center">
+            <h2
+              className="brutal-text-lg mb-4"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Crossword Solved
+            </h2>
+            <p
+              className="text-sm mt-2"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              Players who solved the daily crossword
+            </p>
+          </div>
+
+          {crosswordCompletions.filter(
+            (completion) => !completion.usedSecretCode,
+          ).length > 0 ? (
+            <div className="space-y-3">
+              {crosswordCompletions
+                .filter((completion) => !completion.usedSecretCode)
+                .slice(0, crosswordDisplayCount)
+                .map((completion) => (
+                  <div
+                    key={`${completion.userId}-${completion.completedAt}`}
+                    className="brutal-leaderboard-item"
+                    style={{ background: "var(--bg-success)" }}
+                  >
+                    <div className="w-full text-center">
+                      <div className="font-bold text-lg">
+                        {completion.userName}
+                      </div>
+                      <div
+                        className="text-sm"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        solved the daily crossword on{" "}
+                        {new Date(completion.completedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+              {/* Load More Button */}
+              {crosswordCompletions.filter(
+                (completion) => !completion.usedSecretCode,
+              ).length > crosswordDisplayCount && (
+                <div className="text-center">
+                  <button
+                    onClick={loadMoreCrosswordCompletions}
+                    className="brutal-button secondary px-6 py-3"
+                  >
+                    Load More (
+                    {crosswordCompletions.filter(
+                      (completion) => !completion.usedSecretCode,
+                    ).length - crosswordDisplayCount}{" "}
+                    more)
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p style={{ color: "var(--text-secondary)" }}>
+                No crosswords solved yet. Complete a daily crossword to see
+                results here!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Secret Word for a Win Section */}
+      {crosswordCompletions && crosswordCompletions.length > 0 && (
+        <div className="space-y-6">
+          {crosswordCompletions.filter(
+            (completion) => completion.usedSecretCode,
+          ).length > 0 && (
+            <div className="brutal-card text-center">
+              <h2
+                className="brutal-text-lg mb-4"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Secret Word for a Win
+              </h2>
+              <p
+                className="text-sm mt-2"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Players who used the secret word to solve the crossword
+              </p>
+              <div className="space-y-3 mt-4">
+                {crosswordCompletions
+                  .filter((completion) => completion.usedSecretCode)
+                  .slice(0, 5)
+                  .map((completion) => (
+                    <div
+                      key={`${completion.userId}-${completion.completedAt}`}
+                      className="brutal-leaderboard-item"
+                      style={{ background: "var(--bg-warning)" }}
+                    >
+                      <div className="w-full text-center">
+                        <div className="font-bold text-lg">
+                          {completion.userName}
+                        </div>
+                        <div
+                          className="text-sm"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          used the secret word on{" "}
+                          {new Date(
+                            completion.completedAt,
+                          ).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
         </div>

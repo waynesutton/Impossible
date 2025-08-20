@@ -165,6 +165,111 @@ const applicationTables = {
     respondedAt: v.optional(v.number()),
     newChallengeId: v.optional(v.id("challengeBattles")), // Store new challenge ID when accepted
   }).index("by_challenge", ["originalChallengeId"]),
+
+  // Crossword Mode Tables
+  crosswordPuzzles: defineTable({
+    puzzleId: v.string(), // Unique daily puzzle ID (userId_date format)
+    userId: v.id("users"),
+    dateString: v.string(), // YYYY-MM-DD format for daily uniqueness
+    words: v.array(v.string()), // Array of words in the crossword
+    clues: v.array(v.string()), // Corresponding clues for each word
+    gridSize: v.number(), // Grid dimensions (7x7 default)
+    grid: v.optional(v.array(v.array(v.string()))), // 2D array representing crossword grid (optional for migration)
+    wordPositions: v.array(
+      v.object({
+        word: v.string(),
+        startRow: v.number(),
+        startCol: v.number(),
+        direction: v.union(v.literal("across"), v.literal("down")),
+        clueNumber: v.number(),
+      }),
+    ),
+    generatedAt: v.number(),
+    expiresAt: v.number(), // 24 hours from generation
+  })
+    .index("by_puzzle_id", ["puzzleId"])
+    .index("by_user_and_date", ["userId", "dateString"])
+    .index("by_expiration", ["expiresAt"]),
+
+  userCrosswordAttempts: defineTable({
+    userId: v.id("users"),
+    puzzleId: v.string(), // Reference to crosswordPuzzles.puzzleId
+    startedAt: v.number(),
+    lastActiveAt: v.number(),
+    completed: v.boolean(),
+    completedAt: v.optional(v.number()),
+    currentProgress: v.array(
+      v.object({
+        wordIndex: v.number(),
+        letters: v.array(v.string()), // Current filled letters for this word
+        completed: v.boolean(),
+      }),
+    ),
+    hintsUsed: v.array(v.number()), // Array of word indices where hints were used
+    cluesUsed: v.array(v.number()), // Array of word indices where clues were used
+    aiHintsContent: v.record(v.string(), v.string()), // Map word index to hint content (stringified index)
+    aiCluesContent: v.record(v.string(), v.string()), // Map word index to clue content (stringified index)
+    totalHintsUsed: v.number(),
+    totalCluesUsed: v.number(),
+    suggestionsReceived: v.number(), // Count of friend suggestions
+    usedSecretCode: v.optional(v.boolean()), // Track if user used admin cheat code
+  })
+    .index("by_user_and_puzzle", ["userId", "puzzleId"])
+    .index("by_user_and_completion", ["userId", "completed"])
+    .index("by_last_active", ["lastActiveAt"]),
+
+  crosswordResults: defineTable({
+    userId: v.id("users"),
+    puzzleId: v.string(),
+    dateString: v.string(), // YYYY-MM-DD for daily tracking
+    completed: v.boolean(),
+    completedAt: v.number(),
+    totalTimeMinutes: v.number(),
+    hintsUsed: v.number(),
+    cluesUsed: v.number(),
+    suggestionsUsed: v.number(),
+    wordsCompleted: v.number(),
+    totalWords: v.number(),
+    displayName: v.optional(v.string()),
+    playerName: v.optional(v.string()),
+    isAnonymous: v.boolean(),
+    finalScore: v.number(), // Calculated score based on completion, time, hints used
+    usedSecretCode: v.optional(v.boolean()), // Track if player used the admin cheat code
+  })
+    .index("by_user", ["userId"])
+    .index("by_date_and_completion", ["dateString", "completed"])
+    .index("by_completion_and_time", ["completed", "completedAt"])
+    .index("by_final_score", ["finalScore"]),
+
+  crosswordInvites: defineTable({
+    inviteId: v.optional(v.string()), // Unique invite identifier (optional for migration)
+    puzzleId: v.string(),
+    createdBy: v.optional(v.id("users")), // Legacy field for migration
+    creatorUserId: v.optional(v.id("users")), // New field (optional for migration)
+    creatorName: v.optional(v.string()), // New field (optional for migration)
+    createdAt: v.number(),
+    expiresAt: v.optional(v.number()), // Same as puzzle expiration (optional for migration)
+    used: v.boolean(),
+    usedAt: v.optional(v.number()),
+  })
+    .index("by_invite_id", ["inviteId"])
+    .index("by_puzzle", ["puzzleId"])
+    .index("by_creator", ["creatorUserId"]),
+
+  crosswordSuggestions: defineTable({
+    inviteId: v.string(), // String invite ID to match crosswordInvites.inviteId
+    puzzleId: v.string(),
+    helperId: v.id("users"),
+    helperName: v.string(),
+    targetUserId: v.id("users"),
+    wordIndex: v.number(), // Which word the suggestion is for
+    suggestion: v.string(),
+    submittedAt: v.number(),
+    used: v.boolean(),
+  })
+    .index("by_puzzle_and_target", ["puzzleId", "targetUserId"])
+    .index("by_invite", ["inviteId"])
+    .index("by_word_index", ["puzzleId", "wordIndex"]),
 };
 
 export default defineSchema(applicationTables);

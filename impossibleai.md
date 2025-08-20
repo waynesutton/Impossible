@@ -448,9 +448,103 @@ function getTimerDuration(wordIndex: number): number {
 - **Timers**: Increase/decrease millisecond values
 - **Scoring**: Modify point values and attempt bonuses
 
+## Crossword Mode AI Integration (Planned)
+
+### Daily Crossword Puzzle Generation
+
+The upcoming Impossible Crossword mode will extend the AI capabilities to generate complete crossword puzzles with interconnected words and clues.
+
+#### Crossword Generation Requirements
+
+**Model**: GPT-4o (higher capability needed for complex crossword structure)
+**Grid Size**: 7x7 grid for initial implementation
+**Word Count**: 8-12 intersecting words per puzzle
+**Daily Uniqueness**: One puzzle per day per user with 24-hour persistence
+
+#### Crossword AI Prompts
+
+**Primary Generation Prompt**:
+
+```typescript
+{
+  role: "system",
+  content: `Generate a 7x7 crossword puzzle with 8-12 intersecting words. Return JSON format with:
+  {
+    "words": [
+      {
+        "word": "EXAMPLE",
+        "clue": "A representative case or instance",
+        "startRow": 0,
+        "startCol": 0,
+        "direction": "across",
+        "number": 1
+      }
+    ]
+  }
+  Make words challenging but fair, suitable for a difficult word game. Ensure proper intersections and no conflicts.`
+}
+```
+
+#### Crossword Hint Generation
+
+Unlike single-word hints, crossword hints will be contextual to both the word and its intersection with other answers:
+
+```typescript
+const prompt = `The crossword word is "${word}" and the current clue is "${currentClue}". 
+Provide an additional helpful hint that reveals more about the word without giving it away completely. 
+Consider that this word intersects with other words in the puzzle. Make it more specific than the original clue. 
+Respond with just the hint, nothing else.`;
+```
+
+#### Technical Implementation
+
+**Files to be Created**:
+
+- `convex/crossword.ts` - Crossword-specific AI generation and management
+- `src/ImpossibleCrossword.tsx` - Main crossword interface
+- `src/CrosswordHelper.tsx` - Friend collaboration for crosswords
+
+**New Database Tables**:
+
+- `crosswordPuzzles` - Daily puzzle storage with AI-generated content
+- `userCrosswordAttempts` - Progress tracking across 24-hour sessions
+- `crosswordResults` - Completion records for leaderboards
+
+#### Cost Considerations
+
+**Higher Model Usage**: GPT-4o required for complex crossword generation vs GPT-4o-mini for simple words
+**Daily Generation**: One API call per day for puzzle creation (shared across all users)
+**Hint Generation**: Additional API calls for contextual crossword hints
+**Estimated Cost**: ~$0.15-0.25 per daily puzzle generation, ~$0.05 per hint request
+
+#### Difficulty Configuration
+
+**Easier Crosswords**:
+
+```typescript
+content: "Generate a 5x5 crossword with 6-8 common words suitable for casual players...";
+```
+
+**Harder Crosswords**:
+
+```typescript
+content: "Generate a 9x9 crossword with 12-16 extremely challenging words, including technical and archaic terms...";
+```
+
+### Friend Collaboration Extensions
+
+The crossword mode will extend the existing friend collaboration system with unlimited suggestions rather than the 3-suggestion limit in single-player mode.
+
+#### Crossword Suggestion System
+
+- **Unlimited Suggestions**: Friends can suggest multiple words for different clues
+- **Word-Specific Help**: Suggestions targeted to specific crossword positions
+- **Real-time Collaboration**: Multiple friends can help simultaneously
+- **Persistent Invites**: Crossword invite links remain valid for the full 24-hour puzzle lifecycle
+
 ## Future AI Enhancement Opportunities
 
-### Potential Improvements
+### Current Mode Improvements
 
 1. **Adaptive Difficulty**: Adjust word difficulty based on player success rates
 2. **Hint Progression**: Multi-level hints that become more specific
@@ -458,9 +552,26 @@ function getTimerDuration(wordIndex: number): number {
 4. **Player Analysis**: AI-driven personalized difficulty adjustment
 5. **Hint Quality Assessment**: Track hint effectiveness and optimize prompts
 
+### Crossword Mode Enhancements
+
+1. **Themed Crosswords**: AI-generated puzzles around specific topics (sports, science, history)
+2. **Difficulty Progression**: Weekly increasing difficulty with AI-adjusted complexity
+3. **Collaborative Solving**: AI-moderated team crossword competitions
+4. **Adaptive Grid Sizes**: AI determines optimal grid size based on word complexity
+5. **Cross-Puzzle Learning**: AI learns from player solving patterns to improve future puzzles
+
+### Advanced AI Features
+
+1. **Multi-Modal Hints**: AI-generated image clues for visual learners
+2. **Cultural Adaptation**: AI adjusts references and difficulty based on user region
+3. **Learning Disabilities Support**: AI provides alternative hint formats for accessibility
+4. **Competitive Analysis**: AI analyzes solving strategies to suggest improvements
+
 ### Technical Considerations
 
-- Monitor AI API costs as user base grows
-- Implement fallback word lists if AI service unavailable
-- Consider caching frequently generated words for cost optimization
+- Monitor AI API costs as user base grows, especially with higher-cost crossword generation
+- Implement fallback crossword templates if AI service unavailable
+- Consider caching generated crosswords for cost optimization
 - Evaluate alternative AI models for cost/quality optimization
+- Test crossword generation success rates and implement validation systems
+- Monitor hint request patterns to optimize crossword difficulty

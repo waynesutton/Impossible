@@ -10,6 +10,8 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 import { Dashboard } from "./Dashboard";
 import { ChallengeSetup } from "./ChallengeSetup";
 import { ChallengeMode } from "./ChallengeMode";
+import { ImpossibleCrossword } from "./ImpossibleCrossword";
+import { CrosswordHelper } from "./CrosswordHelper";
 import { AuthButton } from "./components/AuthButton";
 import { MyScores } from "./components/MyScores";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -23,6 +25,7 @@ interface GameCompletionData {
   attempts: number;
   usedSecretWord?: boolean;
   startChallenge?: boolean;
+  startCrossword?: boolean;
 }
 
 export default function App() {
@@ -35,6 +38,8 @@ export default function App() {
     | "my-scores"
     | "challenge"
     | "challenge-setup"
+    | "crossword"
+    | "crossword-helper"
   >("game");
   const [gameCompletionData, setGameCompletionData] =
     useState<GameCompletionData | null>(null);
@@ -42,8 +47,19 @@ export default function App() {
   const [challengeId, setChallengeId] = useState<Id<"challengeBattles"> | null>(
     null,
   );
+  const [crosswordInviteId, setCrosswordInviteId] = useState<string | null>(
+    null,
+  );
   const [challengeCompletionData, setChallengeCompletionData] =
     useState<any>(null);
+  const [crosswordCompletionData, setCrosswordCompletionData] = useState<{
+    completed: boolean;
+    timeMinutes: number;
+    hintsUsed: number;
+    cluesUsed: number;
+    finalScore: number;
+    usedSecretCode: boolean;
+  } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sharedGameScoreId, setSharedGameScoreId] =
     useState<Id<"gameResults"> | null>(null);
@@ -64,6 +80,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const invite = params.get("invite");
     const challengeInvite = params.get("challenge");
+    const crosswordInvite = params.get("crossword-invite");
     const scoreShare = params.get("score");
     const challengeScoreShare = params.get("challenge-score");
     const highlightGame = params.get("highlight");
@@ -75,6 +92,9 @@ export default function App() {
     } else if (challengeInvite) {
       setChallengeId(challengeInvite as Id<"challengeBattles">);
       setCurrentPage("challenge");
+    } else if (crosswordInvite) {
+      setCrosswordInviteId(crosswordInvite);
+      setCurrentPage("crossword-helper");
     } else if (
       scoreShare ||
       challengeScoreShare ||
@@ -147,6 +167,9 @@ export default function App() {
     if (data.startChallenge) {
       // Navigate to challenge setup mode
       setCurrentPage("challenge-setup");
+    } else if (data.startCrossword) {
+      // Navigate to crossword mode
+      setCurrentPage("crossword");
     } else {
       // Normal game completion - go to leaderboard
       setCurrentPage("leaderboard");
@@ -158,6 +181,7 @@ export default function App() {
       await startNewGame();
       setGameCompletionData(null);
       setChallengeCompletionData(null);
+      setCrosswordCompletionData(null);
       setCurrentPage("playing");
     } catch (error) {
       console.error("Failed to start new game:", error);
@@ -184,9 +208,31 @@ export default function App() {
     window.history.replaceState({}, "", window.location.pathname);
   };
 
+  const handleNavigateToCrossword = () => {
+    setCrosswordCompletionData(null); // Clear completion data when navigating
+    setCurrentPage("crossword");
+  };
+
   const handleChallengeComplete = (data: any) => {
     setChallengeCompletionData(data);
     setCurrentPage("leaderboard");
+  };
+
+  const handleCrosswordComplete = (data: {
+    completed: boolean;
+    timeMinutes: number;
+    hintsUsed: number;
+    cluesUsed: number;
+    finalScore: number;
+    usedSecretCode: boolean;
+  }) => {
+    console.log("Crossword completed:", data);
+    if (data.completed) {
+      // Set crossword completion data for leaderboard display
+      setCrosswordCompletionData(data);
+      // Navigate to leaderboard to show crossword results
+      setCurrentPage("leaderboard");
+    }
   };
   return (
     <div
@@ -212,6 +258,14 @@ export default function App() {
               }`}
             >
               Game
+            </button>
+            <button
+              onClick={() => setCurrentPage("crossword")}
+              className={`brutal-nav-button ${
+                currentPage === "crossword" ? "active" : ""
+              }`}
+            >
+              Crossword
             </button>
             <button
               onClick={() => {
@@ -295,6 +349,17 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
+                  setCurrentPage("crossword");
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`mobile-nav-button ${
+                  currentPage === "crossword" ? "active" : ""
+                }`}
+              >
+                Crossword
+              </button>
+              <button
+                onClick={() => {
                   setCurrentPage("leaderboard");
                   setGameCompletionData(null);
                   setChallengeCompletionData(null);
@@ -352,7 +417,9 @@ export default function App() {
         </div>
       )}
       <main className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md mx-auto">
+        <div
+          className={`w-full mx-auto ${currentPage === "crossword" || currentPage === "crossword-helper" ? "" : "max-w-md"}`}
+        >
           {currentPage === "game" ? (
             <div className="text-center space-y-8">
               <div className="brutal-card">
@@ -525,6 +592,13 @@ export default function App() {
               onBackToHome={handleBackToHome}
               onNavigateToLeaderboard={handleChallengeComplete}
             />
+          ) : currentPage === "crossword" ? (
+            <ImpossibleCrossword onGameComplete={handleCrosswordComplete} />
+          ) : currentPage === "crossword-helper" && crosswordInviteId ? (
+            <CrosswordHelper
+              inviteId={crosswordInviteId}
+              onBackToHome={handleBackToHome}
+            />
           ) : currentPage === "my-scores" ? (
             <MyScores />
           ) : currentPage === "dashboard" ? (
@@ -535,7 +609,9 @@ export default function App() {
             <Leaderboard
               gameCompletionData={gameCompletionData}
               challengeCompletionData={challengeCompletionData}
+              crosswordCompletionData={crosswordCompletionData}
               onStartNewGame={handleStartNewGameFromLeaderboard}
+              onNavigateToCrossword={handleNavigateToCrossword}
             />
           )}
         </div>

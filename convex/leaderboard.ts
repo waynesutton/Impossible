@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { Doc } from "./_generated/dataModel";
 import {
   requireAdminRole,
   getCurrentUserIdForMutation,
@@ -249,12 +250,25 @@ export const getDashboardAnalytics = query({
       normalModeLinksClicked: v.number(),
       challengeLinksShared: v.number(),
     }),
+    // Crossword Mode Analytics
+    crosswordMode: v.object({
+      totalCrosswordsGenerated: v.number(),
+      totalCrosswordsCompleted: v.number(),
+      averageCompletionTime: v.number(),
+      averageHintsUsed: v.number(),
+      averageCluesUsed: v.number(),
+      dailyActiveUsers: v.number(),
+      crosswordInvitesCreated: v.number(),
+      averageFinalScore: v.number(),
+      topCrosswordScore: v.number(),
+    }),
     recentActivity: v.array(
       v.object({
         date: v.string(),
         gamesPlayed: v.number(),
         successfulGames: v.number(),
         challengeBattles: v.number(),
+        crosswordGames: v.number(),
       }),
     ),
   }),
@@ -314,6 +328,17 @@ export const getDashboardAnalytics = query({
           normalModeLinksClicked: 0,
           challengeLinksShared: 0,
         },
+        crosswordMode: {
+          totalCrosswordsGenerated: 0,
+          totalCrosswordsCompleted: 0,
+          averageCompletionTime: 0,
+          averageHintsUsed: 0,
+          averageCluesUsed: 0,
+          dailyActiveUsers: 0,
+          crosswordInvitesCreated: 0,
+          averageFinalScore: 0,
+          topCrosswordScore: 0,
+        },
         recentActivity: [],
       };
     }
@@ -367,6 +392,17 @@ export const getDashboardAnalytics = query({
         linkAnalytics: {
           normalModeLinksClicked: 0,
           challengeLinksShared: 0,
+        },
+        crosswordMode: {
+          totalCrosswordsGenerated: 0,
+          totalCrosswordsCompleted: 0,
+          averageCompletionTime: 0,
+          averageHintsUsed: 0,
+          averageCluesUsed: 0,
+          dailyActiveUsers: 0,
+          crosswordInvitesCreated: 0,
+          averageFinalScore: 0,
+          topCrosswordScore: 0,
         },
         recentActivity: [],
       };
@@ -423,6 +459,17 @@ export const getDashboardAnalytics = query({
         linkAnalytics: {
           normalModeLinksClicked: 0,
           challengeLinksShared: 0,
+        },
+        crosswordMode: {
+          totalCrosswordsGenerated: 0,
+          totalCrosswordsCompleted: 0,
+          averageCompletionTime: 0,
+          averageHintsUsed: 0,
+          averageCluesUsed: 0,
+          dailyActiveUsers: 0,
+          crosswordInvitesCreated: 0,
+          averageFinalScore: 0,
+          topCrosswordScore: 0,
         },
         recentActivity: [],
       };
@@ -557,7 +604,12 @@ export const getDashboardAnalytics = query({
     // Group by date for recent activity
     const activityMap = new Map<
       string,
-      { gamesPlayed: number; successfulGames: number; challengeBattles: number }
+      {
+        gamesPlayed: number;
+        successfulGames: number;
+        challengeBattles: number;
+        crosswordGames: number;
+      }
     >();
 
     // Add regular games to activity map
@@ -567,6 +619,7 @@ export const getDashboardAnalytics = query({
         gamesPlayed: 0,
         successfulGames: 0,
         challengeBattles: 0,
+        crosswordGames: 0,
       };
       current.gamesPlayed++;
       if (game.completed && !game.usedSecretWord) {
@@ -584,8 +637,27 @@ export const getDashboardAnalytics = query({
         gamesPlayed: 0,
         successfulGames: 0,
         challengeBattles: 0,
+        crosswordGames: 0,
       };
       current.challengeBattles++;
+      activityMap.set(date, current);
+    });
+
+    // Add crossword games to activity map
+    const recentCrosswordResults = await ctx.db
+      .query("crosswordResults")
+      .filter((q) => q.gt(q.field("completedAt"), sevenDaysAgo))
+      .collect();
+
+    recentCrosswordResults.forEach((result) => {
+      const date = new Date(result.completedAt).toISOString().split("T")[0];
+      const current = activityMap.get(date) || {
+        gamesPlayed: 0,
+        successfulGames: 0,
+        challengeBattles: 0,
+        crosswordGames: 0,
+      };
+      current.crosswordGames++;
       activityMap.set(date, current);
     });
 
@@ -681,6 +753,10 @@ export const getDashboardAnalytics = query({
         normalModeLinksClicked: invites.filter((invite) => invite.used).length, // Using regular invites for normal mode
         challengeLinksShared: challengeInvites.length, // Total challenge invites created (shared)
       },
+
+      // Crossword Mode Analytics
+      crosswordMode: await calculateCrosswordAnalytics(ctx),
+
       recentActivity,
     };
   },
@@ -863,5 +939,285 @@ export const getUserStats = query({
             }
           : undefined,
     };
+  },
+});
+
+// Get crossword leaderboard
+export const getCrosswordLeaderboard = query({
+  args: {},
+  returns: v.object({
+    topScores: v.array(
+      v.object({
+        userId: v.string(),
+        userName: v.string(),
+        finalScore: v.number(),
+        totalTimeMinutes: v.number(),
+        hintsUsed: v.number(),
+        cluesUsed: v.number(),
+        completedAt: v.number(),
+      }),
+    ),
+    recentCompletions: v.array(
+      v.object({
+        userId: v.string(),
+        userName: v.string(),
+        finalScore: v.number(),
+        totalTimeMinutes: v.number(),
+        hintsUsed: v.number(),
+        cluesUsed: v.number(),
+        completedAt: v.number(),
+      }),
+    ),
+    stats: v.object({
+      totalCrosswordsCompleted: v.number(),
+      averageScore: v.number(),
+      averageTime: v.number(),
+      fastestTime: v.number(),
+    }),
+  }),
+  handler: async (ctx) => {
+    try {
+      // Get all completed crossword results
+      const allResults = await ctx.db.query("crosswordResults").collect();
+      const completedResults = allResults.filter((result) => result.completed);
+
+      if (completedResults.length === 0) {
+        return {
+          topScores: [],
+          recentCompletions: [],
+          stats: {
+            totalCrosswordsCompleted: 0,
+            averageScore: 0,
+            averageTime: 0,
+            fastestTime: 0,
+          },
+        };
+      }
+
+      // Get users for display names
+      const userIds = [
+        ...new Set(completedResults.map((result) => result.userId)),
+      ];
+      const users = await Promise.all(
+        userIds.map((userId) => ctx.db.get(userId)),
+      );
+      const userMap = new Map(
+        users.filter(Boolean).map((user) => [user!._id, user]),
+      );
+
+      // Prepare results with user names
+      const resultsWithNames = completedResults
+        .map((result) => {
+          const user = userMap.get(result.userId);
+          return {
+            userId: result.userId,
+            userName: user?.name || user?.email || "Anonymous",
+            finalScore: result.finalScore,
+            totalTimeMinutes: result.totalTimeMinutes,
+            hintsUsed: result.hintsUsed,
+            cluesUsed: result.cluesUsed,
+            completedAt: result.completedAt,
+          };
+        })
+        .filter(Boolean);
+
+      // Top scores (sorted by score, then by time)
+      const topScores = resultsWithNames
+        .sort((a, b) => {
+          if (b.finalScore !== a.finalScore) {
+            return b.finalScore - a.finalScore; // Higher score wins
+          }
+          return a.totalTimeMinutes - b.totalTimeMinutes; // Faster time wins if scores equal
+        })
+        .slice(0, 10);
+
+      // Recent completions (last 10)
+      const recentCompletions = resultsWithNames
+        .sort((a, b) => b.completedAt - a.completedAt)
+        .slice(0, 10);
+
+      // Calculate stats
+      const averageScore = Math.round(
+        resultsWithNames.reduce((sum, result) => sum + result.finalScore, 0) /
+          resultsWithNames.length,
+      );
+      const averageTime = Math.round(
+        resultsWithNames.reduce(
+          (sum, result) => sum + result.totalTimeMinutes,
+          0,
+        ) / resultsWithNames.length,
+      );
+      const fastestTime = Math.min(
+        ...resultsWithNames.map((result) => result.totalTimeMinutes),
+      );
+
+      return {
+        topScores,
+        recentCompletions,
+        stats: {
+          totalCrosswordsCompleted: completedResults.length,
+          averageScore,
+          averageTime,
+          fastestTime,
+        },
+      };
+    } catch (error) {
+      console.error("Error getting crossword leaderboard:", error);
+      return {
+        topScores: [],
+        recentCompletions: [],
+        stats: {
+          totalCrosswordsCompleted: 0,
+          averageScore: 0,
+          averageTime: 0,
+          fastestTime: 0,
+        },
+      };
+    }
+  },
+});
+
+// Helper function to calculate crossword analytics
+async function calculateCrosswordAnalytics(ctx: any) {
+  try {
+    // Get all crossword data
+    const allCrosswordPuzzles = await ctx.db
+      .query("crosswordPuzzles")
+      .collect();
+    const allCrosswordResults = await ctx.db
+      .query("crosswordResults")
+      .collect();
+    const allCrosswordInvites = await ctx.db
+      .query("crosswordInvites")
+      .collect();
+    const completedCrosswords = allCrosswordResults.filter(
+      (result: Doc<"crosswordResults">) => result.completed,
+    );
+
+    // Calculate completion time average
+    const averageCompletionTime =
+      completedCrosswords.length > 0
+        ? Math.round(
+            completedCrosswords.reduce(
+              (sum: number, result: Doc<"crosswordResults">) =>
+                sum + result.totalTimeMinutes,
+              0,
+            ) / completedCrosswords.length,
+          )
+        : 0;
+
+    // Calculate hints and clues usage
+    const averageHintsUsed =
+      completedCrosswords.length > 0
+        ? Math.round(
+            (completedCrosswords.reduce(
+              (sum: number, result: Doc<"crosswordResults">) =>
+                sum + result.hintsUsed,
+              0,
+            ) /
+              completedCrosswords.length) *
+              10,
+          ) / 10 // Round to 1 decimal place
+        : 0;
+
+    const averageCluesUsed =
+      completedCrosswords.length > 0
+        ? Math.round(
+            (completedCrosswords.reduce(
+              (sum: number, result: Doc<"crosswordResults">) =>
+                sum + result.cluesUsed,
+              0,
+            ) /
+              completedCrosswords.length) *
+              10,
+          ) / 10 // Round to 1 decimal place
+        : 0;
+
+    // Calculate daily active users (unique users who played in last 7 days)
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const recentCrosswordResults = allCrosswordResults.filter(
+      (result: Doc<"crosswordResults">) => result.completedAt > sevenDaysAgo,
+    );
+    const dailyActiveUsers = new Set(
+      recentCrosswordResults.map(
+        (result: Doc<"crosswordResults">) => result.userId,
+      ),
+    ).size;
+
+    // Calculate score metrics
+    const allScores = allCrosswordResults.map(
+      (result: Doc<"crosswordResults">) => result.finalScore,
+    );
+    const averageFinalScore =
+      allScores.length > 0
+        ? Math.round(
+            allScores.reduce((sum: number, score: number) => sum + score, 0) /
+              allScores.length,
+          )
+        : 0;
+    const topCrosswordScore = allScores.length > 0 ? Math.max(...allScores) : 0;
+
+    return {
+      totalCrosswordsGenerated: allCrosswordPuzzles.length,
+      totalCrosswordsCompleted: completedCrosswords.length,
+      averageCompletionTime,
+      averageHintsUsed,
+      averageCluesUsed,
+      dailyActiveUsers,
+      crosswordInvitesCreated: allCrosswordInvites.length,
+      averageFinalScore,
+      topCrosswordScore,
+    };
+  } catch (error) {
+    console.error("Error calculating crossword analytics:", error);
+    // Return default values on error
+    return {
+      totalCrosswordsGenerated: 0,
+      totalCrosswordsCompleted: 0,
+      averageCompletionTime: 0,
+      averageHintsUsed: 0,
+      averageCluesUsed: 0,
+      dailyActiveUsers: 0,
+      crosswordInvitesCreated: 0,
+      averageFinalScore: 0,
+      topCrosswordScore: 0,
+    };
+  }
+}
+
+// Get recent crossword completions for leaderboard display
+export const getCrosswordCompletions = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      userName: v.string(),
+      dateString: v.string(),
+      completedAt: v.number(),
+      usedSecretCode: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = args.limit || 10;
+
+    // Get recent completed crosswords
+    const completions = await ctx.db
+      .query("crosswordResults")
+      .withIndex("by_completion_and_time", (q) => q.eq("completed", true))
+      .order("desc")
+      .take(limit);
+
+    return await Promise.all(
+      completions.map(async (result) => {
+        const user = await ctx.db.get(result.userId);
+        return {
+          userId: result.userId,
+          userName: user?.name || "Anonymous",
+          dateString: result.dateString,
+          completedAt: result.completedAt,
+          usedSecretCode: result.usedSecretCode || false,
+        };
+      }),
+    );
   },
 });
