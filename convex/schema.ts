@@ -168,14 +168,16 @@ const applicationTables = {
 
   // Crossword Mode Tables
   crosswordPuzzles: defineTable({
-    puzzleId: v.string(), // Unique daily puzzle ID (userId_date format)
+    puzzleId: v.string(), // Unique puzzle ID (unlimited play)
     userId: v.id("users"),
-    dateString: v.string(), // YYYY-MM-DD format for daily uniqueness
+    dateString: v.string(), // Generation timestamp for tracking
     words: v.array(v.string()), // Array of words in the crossword
     clues: v.array(v.string()), // Corresponding clues for each word
-    gridSize: v.number(), // Grid dimensions (7x7 default)
+    hints: v.optional(v.array(v.string())), // Preloaded hints for each word
+    helpClues: v.optional(v.array(v.string())), // Preloaded help clues for each word
+    gridSize: v.number(), // Grid dimensions (15x15 default)
     grid: v.optional(v.array(v.array(v.string()))), // 2D array representing crossword grid (optional for migration)
-    theme: v.optional(v.string()), // Daily theme for the crossword puzzle
+    theme: v.optional(v.string()), // Puzzle theme for the crossword
     wordPositions: v.array(
       v.object({
         word: v.string(),
@@ -186,7 +188,7 @@ const applicationTables = {
       }),
     ),
     generatedAt: v.number(),
-    expiresAt: v.number(), // 24 hours from generation
+    expiresAt: v.number(), // Long expiration for unlimited play
   })
     .index("by_puzzle_id", ["puzzleId"])
     .index("by_user_and_date", ["userId", "dateString"])
@@ -271,6 +273,30 @@ const applicationTables = {
     .index("by_puzzle_and_target", ["puzzleId", "targetUserId"])
     .index("by_invite", ["inviteId"])
     .index("by_word_index", ["puzzleId", "wordIndex"]),
+
+  wordPool: defineTable({
+    word: v.string(),
+    clue: v.string(),
+  }),
+
+  // V2 Leaderboard tables
+  scores: defineTable({
+    userId: v.id("users"),
+    gameId: v.string(),
+    word: v.string(),
+    completed: v.boolean(),
+    attempts: v.number(),
+    completedAt: v.number(),
+    displayName: v.optional(v.string()),
+    playerName: v.optional(v.string()),
+    isAnonymous: v.boolean(),
+    finalScore: v.number(),
+    usedSecretCode: v.optional(v.boolean()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_game_and_completion", ["gameId", "completed"])
+    .index("by_completion_and_time", ["completed", "completedAt"])
+    .index("by_final_score", ["finalScore"]),
 };
 
 export default defineSchema(applicationTables);

@@ -38,17 +38,17 @@ The Impossible Word game is a challenging word-guessing experience that combines
 7. **Battle Results**: Final scores compared, winner declared, results saved to leaderboard
 8. **Rematch System**: Players can challenge each other again for competitive replay
 
-### Crossword Mode (Daily Puzzles)
+### Crossword Mode (Weekly Puzzles)
 
-1. **Daily Generation**: Each user gets a unique 7x7 crossword puzzle generated daily by AI
-2. **Grid Layout**: Traditional crossword format with blocked squares and numbered clues
-3. **Word Intersections**: 6-8 interconnected words (3-6 letters each) with proper crossword structure
-4. **AI Clues**: Each word has an AI-generated clue that's challenging but fair
-5. **Progress Tracking**: Real-time progress saving with 24-hour puzzle persistence
-6. **AI Assistance**: Request AI hints for specific words or letter reveals
-7. **Friend Collaboration**: Unlimited friend suggestions via invite links (unlike the 3-suggestion limit in single-player)
-8. **Completion Scoring**: Points based on completion time, hints used, and assistance received
-9. **Expiration System**: Puzzles expire after 24 hours and show the completed solution
+1. **Weekly Word Pool**: AI generates 80 themed words every Sunday via automated cron job
+2. **Algorithmic Layout**: Deterministic algorithm places words with guaranteed proper intersections
+3. **7x7 Grid**: Standardized grid size with 3-4 words (3-6 letters each) ensuring reliable gameplay
+4. **Smart Word Selection**: System picks compatible words with shared letters for better intersections
+5. **Simplified Interface**: Static hints display without interactive buttons or direction labels
+6. **Manual Submission**: Players select words by clicking cells and submit via dedicated button
+7. **Theme Highlighting**: Crossword theme prominently displayed with proper contrast
+8. **Friend Collaboration**: Unlimited friend suggestions via invite links with real-time sync
+9. **Unlimited Play**: Generate new crosswords anytime after completing one with "Start Over" feature
 
 ### Core Features
 
@@ -75,12 +75,13 @@ The Impossible Word game is a challenging word-guessing experience that combines
 
 **Crossword Mode:**
 
-- 7x7 grid with 6-8 interconnected words following traditional crossword rules
-- 24-hour puzzle persistence with automatic daily generation
+- 7x7 grid with 3-4 interconnected words following traditional crossword rules
+- Weekly word pool generation with 80 themed words refreshed every Sunday
+- Algorithmic layout system ensuring 100% reliable word intersections
 - Real-time progress saving and grid state synchronization
-- Unlimited friend suggestions via shareable invite links
-- AI hint generation for word context and AI letter reveals for specific positions
-- Completion scoring based on time, assistance used, and hints requested
+- Unlimited friend suggestions via shareable invite links with instant application
+- Manual word submission system with word selection and submit button
+- Simplified hints display without interactive buttons or direction confusion
 
 **General:**
 

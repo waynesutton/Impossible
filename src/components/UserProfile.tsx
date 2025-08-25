@@ -62,6 +62,39 @@ export function UserProfile() {
               </div>
             </div>
 
+            {/* Crossword Statistics */}
+            {userStats.crosswordStats && (
+              <div className="mt-6">
+                <h3 className="brutal-text-md mb-3">Crossword Stats</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.crosswordStats.crosswordsCompleted}
+                    </div>
+                    <div className="text-sm">Crosswords Completed</div>
+                  </div>
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.crosswordStats.bestScore}
+                    </div>
+                    <div className="text-sm">Best Score</div>
+                  </div>
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.crosswordStats.averageScore}
+                    </div>
+                    <div className="text-sm">Avg Score</div>
+                  </div>
+                  <div className="brutal-stats-card">
+                    <div className="brutal-text-lg">
+                      {userStats.crosswordStats.fastestTime}m
+                    </div>
+                    <div className="text-sm">Fastest Time</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Challenge Mode Statistics */}
             {userStats.challengeStats && (
               <div className="mt-6">

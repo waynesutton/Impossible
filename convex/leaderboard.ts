@@ -835,6 +835,16 @@ export const getUserStats = query({
         averageScore: v.number(),
       }),
     ),
+    crosswordStats: v.optional(
+      v.object({
+        totalCrosswords: v.number(),
+        crosswordsCompleted: v.number(),
+        averageScore: v.number(),
+        bestScore: v.number(),
+        averageTime: v.number(),
+        fastestTime: v.number(),
+      }),
+    ),
   }),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -846,6 +856,7 @@ export const getUserStats = query({
         winRate: 0,
         averageAttempts: 0,
         challengeStats: undefined,
+        crosswordStats: undefined,
       };
     }
 
@@ -862,6 +873,7 @@ export const getUserStats = query({
         winRate: 0,
         averageAttempts: 0,
         challengeStats: undefined,
+        crosswordStats: undefined,
       };
     }
 
@@ -924,6 +936,52 @@ export const getUserStats = query({
           )
         : 0;
 
+    // Get user's crossword stats
+    const userCrosswordResults = await ctx.db
+      .query("crosswordResults")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const completedCrosswords = userCrosswordResults.filter(
+      (result) => result.completed,
+    );
+
+    const crosswordStats =
+      userCrosswordResults.length > 0
+        ? {
+            totalCrosswords: userCrosswordResults.length,
+            crosswordsCompleted: completedCrosswords.length,
+            averageScore:
+              completedCrosswords.length > 0
+                ? Math.round(
+                    completedCrosswords.reduce(
+                      (sum, result) => sum + result.finalScore,
+                      0,
+                    ) / completedCrosswords.length,
+                  )
+                : 0,
+            bestScore:
+              completedCrosswords.length > 0
+                ? Math.max(...completedCrosswords.map((r) => r.finalScore))
+                : 0,
+            averageTime:
+              completedCrosswords.length > 0
+                ? Math.round(
+                    completedCrosswords.reduce(
+                      (sum, result) => sum + result.totalTimeMinutes,
+                      0,
+                    ) / completedCrosswords.length,
+                  )
+                : 0,
+            fastestTime:
+              completedCrosswords.length > 0
+                ? Math.min(
+                    ...completedCrosswords.map((r) => r.totalTimeMinutes),
+                  )
+                : 0,
+          }
+        : undefined;
+
     return {
       totalGames,
       wins,
@@ -938,6 +996,7 @@ export const getUserStats = query({
               averageScore,
             }
           : undefined,
+      crosswordStats,
     };
   },
 });

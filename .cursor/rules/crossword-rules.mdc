@@ -1,0 +1,278 @@
+---
+description: Crossword Validation Rules for Impossible Game
+globs:
+alwaysApply: true
+---
+
+---
+
+description: Crossword Validation Rules for Impossible Game
+globs:
+alwaysApply: true
+
+---
+
+Crossword Validation Rules for Impossible Game
+
+## NEW ARCHITECTURE: WEEKLY WORD POOL + ALGORITHMIC LAYOUT
+
+The crossword system now uses a hybrid approach for 100% reliability:
+
+- **Weekly Word Pool**: AI generates 80 themed words every Sunday via cron job
+- **Algorithmic Layout**: Deterministic algorithm places words with guaranteed intersections
+- **Smart Word Selection**: System picks compatible words with shared letters
+- **Unlimited Play**: Users can generate new crosswords anytime after completing one
+
+## CRITICAL CROSSWORD VALIDATION REQUIREMENTS - MUST ALWAYS BE ENFORCED
+
+### 1. GRID CONSTRAINTS (NON-NEGOTIABLE)
+
+- Grid is EXACTLY 7x7 (rows 0-6, columns 0-6)
+- For ACROSS words: startCol + word.length MUST be <= 7
+- For DOWN words: startRow + word.length MUST be <= 7
+- No exceptions to these bounds - violations will break the UI
+
+### 2. WORD CONSTRAINTS
+
+- Word lengths: EXACTLY 3-6 letters (no exceptions)
+- Maximum 3-4 words total to ensure proper fit and intersections
+- All words must intersect with at least one other word
+- No isolated words allowed
+- Words are selected from weekly themed pool of 80 words
+
+### 2.1. INTERSECTION REQUIREMENTS - CRITICAL FOR REAL CROSSWORDS
+
+- Words MUST intersect at shared letters that spell correctly in both directions
+- At intersection points, the EXACT SAME LETTER must work for both the across and down word
+- Example: "CAT" across and "APE" down intersect at 'A' - they share the letter 'A' at grid position [3,3]
+- Invalid: "CAT" and "DOG" placed separately without sharing any letters
+- Valid: "CAT" at [3,2] across and "APE" at [3,3] down - they intersect at the letter 'A'
+- Algorithmic layout ensures words properly intersect with matching letters at crossing points
+- All fallback crosswords demonstrate proper intersections with shared letters
+
+### 3. WEEKLY WORD POOL GENERATION (convex/crossword.ts)
+
+```typescript
+// AI generates 80 themed words every Sunday via cron job:
+export const generateWeeklyWordPool = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    // 1. Generate creative theme (e.g., "Space Exploration", "Marine Biology")
+    // 2. Generate exactly 80 words (3-6 letters) with clues
+    // 3. Store in wordPool table for the week
+    // 4. Retry up to 3 times if AI doesn't generate enough words
+  }
+});
+
+WORD POOL REQUIREMENTS:
+- Exactly 80 words per week
+- Each word 3-6 letters only
+- Themed words with quality clues
+- Stored in wordPool table
+- Refreshed every Sunday at 8:00 AM UTC
+```
+
+### 4. ALGORITHMIC LAYOUT SYSTEM (convex/crossword.ts)
+
+```typescript
+// Deterministic algorithm places words with guaranteed intersections:
+function generateLayout(words: string[], gridSize: number): Layout | null {
+  // 1. Sort words by length (longest first)
+  // 2. Place first word in center
+  // 3. Find intersection points for remaining words
+  // 4. Validate all placements and connections
+  // 5. Ensure single connected component
+}
+
+LAYOUT ALGORITHM FEATURES:
+- Smart word selection with selectCompatibleWords()
+- Prioritizes words with shared letters
+- 50 attempts with different word combinations
+- Validates proper intersections at shared letters
+- Falls back to pre-built puzzles if needed
+```
+
+### 5. BACKEND VALIDATION (convex/crossword.ts)
+
+```typescript
+// ALWAYS validate before storing puzzle:
+const validationErrors: string[] = [];
+
+puzzleData.positions.forEach((pos: any, index: number) => {
+  const word = puzzleData.words[index];
+
+  // Check word length constraint (3-6 letters)
+  if (word.length < 3 || word.length > 6) {
+    validationErrors.push(
+      `Word "${word}" has invalid length ${word.length} (must be 3-6)`,
+    );
+  }
+
+  // Check if word fits in grid bounds
+  if (pos.direction === "across") {
+    if (pos.startCol + word.length > 7) {
+      validationErrors.push(`Word "${word}" (across) exceeds grid width`);
+    }
+  } else if (pos.direction === "down") {
+    if (pos.startRow + word.length > 7) {
+      validationErrors.push(`Word "${word}" (down) exceeds grid height`);
+    }
+  }
+});
+
+if (validationErrors.length > 0) {
+  throw new Error(
+    `Invalid crossword generated: ${validationErrors.join(", ")}`,
+  );
+}
+```
+
+### 6. FRONTEND VALIDATION (src/ImpossibleCrossword.tsx)
+
+```typescript
+// ALWAYS validate before rendering:
+useEffect(() => {
+  if (currentCrossword?.gridSize) {
+    const validationErrors: string[] = [];
+
+    // Check grid size is exactly 7x7
+    if (currentCrossword.gridSize !== 7) {
+      validationErrors.push(
+        `Invalid grid size: ${currentCrossword.gridSize}, expected 7`,
+      );
+    }
+
+    // Validate each word position
+    currentCrossword.wordPositions.forEach(
+      (wordPos: WordPosition, index: number) => {
+        const word = currentCrossword.words[index];
+
+        // Check word length constraint (3-6 letters)
+        if (word.length < 3 || word.length > 6) {
+          validationErrors.push(
+            `Word "${word}" has invalid length ${word.length} (must be 3-6)`,
+          );
+        }
+
+        // Check if word fits in grid bounds
+        if (wordPos.direction === "across") {
+          if (wordPos.startCol + word.length > 7) {
+            validationErrors.push(`Word "${word}" (across) exceeds grid width`);
+          }
+        } else if (wordPos.direction === "down") {
+          if (wordPos.startRow + word.length > 7) {
+            validationErrors.push(`Word "${word}" (down) exceeds grid height`);
+          }
+        }
+      },
+    );
+
+    if (validationErrors.length > 0) {
+      console.error("Frontend crossword validation failed:", validationErrors);
+      setGenerationError(
+        `Invalid crossword received: ${validationErrors.join(", ")}`,
+      );
+      return;
+    }
+  }
+}, [currentCrossword]);
+```
+
+### 7. UI SYNC REQUIREMENTS
+
+- Frontend grid rendering must match backend word positions exactly
+- All input cells must correspond to actual word letters only
+- No clickable cells outside word boundaries
+- Word submission notifications must use high-contrast colors:
+  ```typescript
+  // Success: Green background (#22c55e) with white text
+  // Error: Red background (#ef4444) with white text
+  // Always use black border (3px solid #000) for maximum contrast
+  ```
+
+### 8. ERROR HANDLING PROTOCOL
+
+- Invalid crosswords MUST be rejected and regenerated (never accepted)
+- Frontend must display clear error messages for validation failures
+- Both backend and frontend must log validation errors for debugging
+- Never allow broken crosswords to reach the user interface
+
+### 9. GAMEPLAY FEATURES
+
+- **Unlimited Play**: Users can generate new crosswords anytime after completing one
+- **Start Over Button**: Themed confirmation dialog allows restarting with new words
+- **Instant Sync**: No debouncing - every letter input syncs immediately to backend
+- **Manual Word Submission**: Players must select words and manually submit them for checking
+- **Word Selection**: Click cells to select words, highlighted with theme colors
+- **Submit Button**: Appears when word is selected, shows word number and direction
+- **Loading States**: Custom crossword-themed spinner during generation
+- **Friend Help**: Invite system allows friends to suggest words via shareable links
+- **Real-time Updates**: Helper interface shows live progress of main player
+- **Friend Suggestions**: Unlimited suggestions from friends, applied directly to grid when used
+
+### 10. TESTING CHECKLIST
+
+Before deploying crossword changes, verify:
+
+- [ ] All words fit within 7x7 grid bounds
+- [ ] Word lengths are 3-6 letters only
+- [ ] Word positions match actual word lengths
+- [ ] No words exceed grid boundaries
+- [ ] UI notifications are readable (white text on colored background)
+- [ ] Validation works on both backend and frontend
+- [ ] Error handling prevents broken crosswords from displaying
+- [ ] Word pool has 80 words available
+- [ ] Algorithmic layout produces proper intersections
+- [ ] Start Over button works with themed confirmation
+- [ ] Loading states display correctly during generation
+
+### 11. SIMPLIFIED CROSSWORD SYSTEM
+
+- **Static Hints Display**: Word hints shown as simple text list without interactive buttons
+- **No Direction Labels**: Hints show only word length (e.g., "5 letters") without across/down
+- **No Number Connection**: Hints don't show crossword grid numbers to avoid confusion
+- **Manual Submission**: Players select words by clicking cells and use submit button
+- **Word Selection Highlighting**: Selected words highlighted with theme accent colors
+- **Theme Consistency**: All UI elements match current user theme (colors, backgrounds)
+- **Friend Collaboration**: Unlimited suggestions from friends via invite links
+- **Real-time Sync**: Grid state syncs between main player and helpers instantly
+
+### 12. FALLBACK SYSTEM
+
+- When algorithmic layout fails after 50 attempts, system uses pre-built valid crosswords
+- Fallback puzzles include: ART+TAPE+EGG with proper intersections
+- All fallback puzzles demonstrate PROPER INTERSECTIONS with shared letters
+- Example: ART (across) intersects with TAPE (down) at 'T', EGG (down) at shared position
+- Ensures users always get a working crossword with real crossword intersections
+- Fallback is rare due to improved word selection and layout algorithm
+
+### 13. COMMON PITFALLS TO AVOID
+
+- Never generate words longer than 6 letters
+- Never place words that would extend beyond grid boundaries
+- Never allow startRow/startCol + word.length to exceed 7
+- Never use word positions without validation
+- Never display notifications with poor color contrast
+- Never skip validation on either backend or frontend
+- Never allow isolated words or words without proper intersections
+- Never let the system fail completely - fallback crosswords ensure reliability
+- Never rely solely on AI for layout - use algorithmic placement for consistency
+- Never skip the word pool generation - ensure 80 words are always available
+
+## MEMORY REFERENCE
+
+This rule references memory ID: 6789171 - "Crossword Validation Requirements"
+
+## ENFORCEMENT
+
+These rules are CRITICAL for crossword functionality. Any violation will result in:
+
+- Cut-off words in the UI
+- Broken grid rendering
+- Poor user experience
+- System errors
+
+ALWAYS validate crosswords at ALL THREE points: word pool generation, algorithmic layout, and frontend rendering.
+ALWAYS have fallback crosswords available when layout algorithm fails.
+ALWAYS ensure word pool has sufficient words (80) for reliable generation.
+ALWAYS use algorithmic layout for consistent, proper intersections.

@@ -4,6 +4,7 @@ import {
   mutation,
   internalAction,
   internalMutation,
+  internalQuery,
 } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -12,7 +13,7 @@ import {
   getCurrentUserIdForMutation,
 } from "./auth/helpers";
 
-// Get or create user's daily crossword puzzle
+// Get or create user's crossword puzzle (unlimited after first completion)
 export const getCurrentCrossword = query({
   args: {},
   returns: v.union(
@@ -20,6 +21,8 @@ export const getCurrentCrossword = query({
       puzzleId: v.string(),
       words: v.array(v.string()),
       clues: v.array(v.string()),
+      hints: v.optional(v.array(v.string())),
+      helpClues: v.optional(v.array(v.string())),
       gridSize: v.number(),
       grid: v.optional(v.array(v.array(v.string()))), // Include grid data
       theme: v.optional(v.string()), // Include theme
@@ -57,18 +60,12 @@ export const getCurrentCrossword = query({
     const userId = await getCurrentUserIdForQuery(ctx);
     if (!userId) return null;
 
-    // Find the most recent puzzle for this user today
-    let puzzle = await findTodaysPuzzle(ctx, userId);
+    // Find the most recent puzzle for this user (unlimited play)
+    const puzzle = await findMostRecentPuzzle(ctx, userId);
 
     if (!puzzle) {
       // No puzzle exists - return null to indicate need for generation
-      // The frontend should call a mutation to trigger puzzle generation
       return null;
-    }
-
-    // Check if puzzle is expired
-    if (Date.now() > puzzle.expiresAt) {
-      return null; // Will trigger new generation
     }
 
     // Get user's progress using the actual puzzle ID from the found puzzle
@@ -85,6 +82,8 @@ export const getCurrentCrossword = query({
       puzzleId: puzzle.puzzleId,
       words: puzzle.words,
       clues: puzzle.clues,
+      hints: puzzle.hints,
+      helpClues: puzzle.helpClues,
       gridSize: puzzle.gridSize,
       grid: puzzle.grid, // Include the complete grid with blocked cells
       theme: puzzle.theme, // Include the daily theme
@@ -121,8 +120,8 @@ export const updateCrosswordProgress = mutation({
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdForMutation(ctx);
 
-    // Find the most recent puzzle for this user today
-    const puzzle = await findTodaysPuzzle(ctx, userId);
+    // Find the most recent puzzle for this user (unlimited play)
+    const puzzle = await findMostRecentPuzzle(ctx, userId);
 
     if (!puzzle) {
       throw new Error("No active crossword found");
@@ -286,8 +285,8 @@ export const requestCrosswordHint = mutation({
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdForMutation(ctx);
 
-    // Find the most recent puzzle for this user today
-    const puzzle = await findTodaysPuzzle(ctx, userId);
+    // Find the most recent puzzle for this user (unlimited play)
+    const puzzle = await findMostRecentPuzzle(ctx, userId);
     if (!puzzle) {
       throw new Error("No crossword in progress");
     }
@@ -380,8 +379,8 @@ export const requestCrosswordClue = mutation({
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdForMutation(ctx);
 
-    // Find the most recent puzzle for this user today
-    const puzzle = await findTodaysPuzzle(ctx, userId);
+    // Find the most recent puzzle for this user (unlimited play)
+    const puzzle = await findMostRecentPuzzle(ctx, userId);
     if (!puzzle) {
       throw new Error("No crossword in progress");
     }
@@ -520,7 +519,7 @@ export const getUserCrosswordHistory = query({
   },
 });
 
-// Start crossword game and trigger puzzle generation if needed
+// Start crossword game and trigger puzzle generation (unlimited play)
 export const startCrosswordGame = mutation({
   args: { forceNew: v.optional(v.boolean()) },
   returns: v.object({
@@ -529,32 +528,29 @@ export const startCrosswordGame = mutation({
   }),
   handler: async (ctx, args) => {
     const userId = await getCurrentUserIdForMutation(ctx);
-    const today = new Date().toISOString().split("T")[0];
 
-    // If forceNew is true, create a new puzzle with timestamp for uniqueness
-    const puzzleId = args.forceNew
-      ? `${userId}_${today}_${Date.now()}`
-      : `${userId}_${today}`;
+    // Clean up any old 7x7 puzzles that are incompatible with new 15x15 system
+    await cleanupOldCrosswordPuzzles(ctx, userId);
 
-    // Check if puzzle already exists (skip check if forceNew)
-    if (!args.forceNew) {
-      const existingPuzzle = await ctx.db
-        .query("crosswordPuzzles")
-        .withIndex("by_puzzle_id", (q) => q.eq("puzzleId", puzzleId))
-        .first();
+    // Clear any existing user progress for fresh start
+    await clearUserCrosswordSession(ctx, userId);
 
-      if (existingPuzzle && Date.now() <= existingPuzzle.expiresAt) {
-        return {
-          success: true,
-          puzzleReady: true,
-        };
-      }
+    // Delete any existing puzzles for this user to ensure fresh start
+    const existingPuzzles = await ctx.db
+      .query("crosswordPuzzles")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+
+    for (const puzzle of existingPuzzles) {
+      await ctx.db.delete(puzzle._id);
     }
 
-    // Generate new puzzle
-    const dateString = args.forceNew ? `${today}_${Date.now()}` : today;
+    // Create unique puzzle ID for unlimited play
+    const puzzleId = `${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const dateString = Date.now().toString();
 
-    await ctx.scheduler.runAfter(0, internal.crossword.generateDailyCrossword, {
+    // Generate new puzzle
+    await ctx.scheduler.runAfter(0, internal.crossword.generateCrossword, {
       userId,
       dateString,
       puzzleId,
@@ -575,7 +571,7 @@ export const createCrosswordInvite = mutation({
     const userId = await getCurrentUserIdForMutation(ctx);
 
     // Verify user has an active crossword
-    const puzzle = await findTodaysPuzzle(ctx, userId);
+    const puzzle = await findMostRecentPuzzle(ctx, userId);
 
     if (!puzzle) {
       throw new Error("No active crossword found");
@@ -612,6 +608,8 @@ export const createCrosswordPuzzle = internalMutation({
     dateString: v.string(),
     words: v.array(v.string()),
     clues: v.array(v.string()),
+    hints: v.optional(v.array(v.string())),
+    helpClues: v.optional(v.array(v.string())),
     gridSize: v.number(),
     grid: v.array(v.array(v.string())),
     theme: v.optional(v.string()),
@@ -635,6 +633,8 @@ export const createCrosswordPuzzle = internalMutation({
       dateString: args.dateString,
       words: args.words,
       clues: args.clues,
+      hints: args.hints,
+      helpClues: args.helpClues,
       gridSize: args.gridSize,
       grid: args.grid,
       theme: args.theme,
@@ -724,196 +724,123 @@ export const updateUserHint = internalMutation({
   },
 });
 
+// Helper function to get the word pool
+export const getWordPool = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("wordPool").collect();
+  },
+});
+
 // AI Integration: Generate daily crossword puzzle
-export const generateDailyCrossword = internalAction({
+export const generateCrossword = internalAction({
   args: {
     userId: v.id("users"),
     dateString: v.string(),
     puzzleId: v.string(),
   },
-  returns: v.object({
-    puzzleId: v.string(),
-    words: v.array(v.string()),
-    clues: v.array(v.string()),
-    gridSize: v.number(),
-    wordPositions: v.array(
-      v.object({
-        word: v.string(),
-        startRow: v.number(),
-        startCol: v.number(),
-        direction: v.union(v.literal("across"), v.literal("down")),
-        clueNumber: v.number(),
-      }),
-    ),
-    expiresAt: v.number(),
-  }),
   handler: async (ctx, args) => {
-    console.log(
-      "Starting crossword generation for user:",
-      args.userId,
-      "date:",
-      args.dateString,
-    );
+    const wordPool = await ctx.runQuery(internal.crossword.getWordPool);
 
-    const openai = new (await import("openai")).default({
-      apiKey: process.env.OPENAI_API_KEY,
+    if (wordPool.length < 10) {
+      console.error(
+        "Word pool has insufficient words. Triggering generation...",
+      );
+      // This will run the generation and the user can try again shortly.
+      await ctx.scheduler.runAfter(
+        0,
+        internal.crossword.generateWeeklyWordPool,
+        {},
+      );
+      throw new Error("Word pool is not ready. Please try again in a moment.");
+    }
+
+    const MAX_LAYOUT_ATTEMPTS = 50;
+    let puzzleData = null;
+
+    for (let attempt = 1; attempt <= MAX_LAYOUT_ATTEMPTS; attempt++) {
+      const numWords = Math.random() > 0.5 ? 4 : 3;
+      const selectedItems = selectCompatibleWords(wordPool, numWords);
+
+      const words = selectedItems.map((item) => item.word);
+      const clues = selectedItems.map((item) => item.clue);
+
+      const layoutResult = generateLayout(
+        words.map((w) => w.toUpperCase()),
+        7,
+      );
+
+      if (layoutResult) {
+        console.log(
+          `Layout generated successfully on attempt ${attempt} with words: ${words.join(", ")}`,
+        );
+        puzzleData = {
+          theme: "Weekly Mix", // Theme is now generalized
+          words: words.map((w) => w.toUpperCase()),
+          clues,
+          positions: layoutResult.positions,
+          grid: layoutResult.grid,
+        };
+        break; // Success!
+      }
+    }
+
+    if (!puzzleData) {
+      console.error(
+        "Failed to generate a valid layout after multiple attempts. Using fallback puzzle.",
+      );
+      puzzleData = getFallbackPuzzle();
+    }
+
+    const { theme, words, clues, positions, grid } = puzzleData as {
+      theme: string;
+      words: string[];
+      clues: string[];
+      positions: Position[];
+      grid: string[][];
+    };
+    const gridSize = 7;
+
+    // Generate hints and help clues for the final word list
+    const hints: string[] = [];
+    const helpClues: string[] = [];
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      const clue = clues[i];
+      hints.push(`Think about this: ${clue.toLowerCase()}`);
+      helpClues.push(`First letter is "${word[0]}"`);
+    }
+
+    const expiresAt = Date.now() + 365 * 24 * 60 * 60 * 1000; // 1 year
+
+    // Store the final, validated puzzle in the database
+    await ctx.runMutation(internal.crossword.createCrosswordPuzzle, {
+      puzzleId: args.puzzleId,
+      userId: args.userId,
+      dateString: args.dateString,
+      words,
+      clues,
+      hints,
+      helpClues,
+      gridSize,
+      grid,
+      wordPositions: positions,
+      generatedAt: Date.now(),
+      expiresAt,
+      theme,
     });
 
-    try {
-      console.log("Attempting OpenAI API call for crossword generation...");
+    console.log("Crossword puzzle stored successfully!");
 
-      // Generate crossword words and clues using AI with timeout
-      const response = (await Promise.race([
-        openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a professional crossword puzzle generator. Create a proper 7x7 crossword puzzle following traditional American-style crossword rules with a daily theme.
-
-CROSSWORD RULES (based on standard American-style crosswords):
-1. Grid must have black/blocked squares (~20-25% of grid) to separate entries
-2. All words must be at least 3 letters long
-3. Words must intersect properly - every letter should be "checked" (part of both across and down words where possible)
-4. Use common English words, mix of contemporary and classic references
-5. Grid should have 180-degree rotational symmetry
-6. All white (word) squares should be connected
-7. Create witty, engaging clues with humor and pop culture references
-8. Include a clear daily theme that connects several answers
-
-DAILY THEME GUIDELINES:
-- Choose from themes like: Pop Culture, Science & Nature, Food & Cooking, Travel & Places, Sports & Games, History & Literature, Technology & Modern Life, Music & Arts, Movies & TV, or mix themes creatively
-- 3-4 theme answers should relate to the chosen theme
-- Theme answers can be longer (4-6 letters) and should be placed prominently
-- Non-theme answers provide variety and fill
-
-STRUCTURE:
-- Total grid: 7x7 (49 squares)
-- Approximately 10-12 black squares (more structure for better crossword)
-- 8-12 words total (mix of across and down)
-- Theme words: 3-4 words (4-6 letters each)
-- Fill words: 4-8 words (3-5 letters each)
-- Make clues witty and contemporary but fair
-
-CLUE STYLE:
-- Use humor and wordplay where appropriate (mark with ?)
-- Include contemporary references (apps, memes, recent culture)
-- Mix classic and modern references for broad appeal
-- Keep definitions clear but entertaining
-
-RESPONSE FORMAT (exact JSON):
-{
-  "theme": "Today's Theme Name",
-  "words": ["THEME1", "THEME2", "FILL1", "FILL2"],
-  "clues": ["Witty clue for theme word 1", "Pop culture clue 2", "Fill clue 1", "Fill clue 2"],
-  "positions": [
-    {"word": "THEME1", "startRow": 0, "startCol": 0, "direction": "across", "clueNumber": 1},
-    {"word": "THEME2", "startRow": 2, "startCol": 1, "direction": "down", "clueNumber": 2}
-  ],
-  "blockedCells": [
-    {"row": 1, "col": 3},
-    {"row": 1, "col": 4},
-    {"row": 5, "col": 2},
-    {"row": 5, "col": 3}
-  ]
-}`,
-            },
-            {
-              role: "user",
-              content: `Generate a themed crossword puzzle for user ${args.userId} on date ${args.dateString}. Create a fun daily theme and make it engaging for players aged 20-50+ with witty clues and contemporary references!`,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 1000,
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("OpenAI API timeout")), 15000),
-        ),
-      ])) as any;
-
-      console.log("OpenAI API call successful, parsing response...");
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error("No response content from AI");
-      }
-
-      console.log("AI Response content:", content);
-
-      // Parse AI response
-      const puzzleData = JSON.parse(content);
-      console.log("Parsed puzzle data:", puzzleData);
-
-      const puzzleId = args.puzzleId; // Use the puzzle ID passed from startCrosswordGame
-      const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-
-      // Build grid from word positions (7x7 grid)
-      const gridSize = 7;
-      const grid = Array(gridSize)
-        .fill(null)
-        .map(() => Array(gridSize).fill(""));
-
-      // Mark blocked cells first
-      if (puzzleData.blockedCells) {
-        puzzleData.blockedCells.forEach((blocked: any) => {
-          if (blocked.row < gridSize && blocked.col < gridSize) {
-            grid[blocked.row][blocked.col] = "#"; // Use # to mark blocked cells
-          }
-        });
-      }
-
-      // Place words in the grid
-      puzzleData.positions.forEach((pos: any) => {
-        for (let i = 0; i < pos.word.length; i++) {
-          const row =
-            pos.direction === "across" ? pos.startRow : pos.startRow + i;
-          const col =
-            pos.direction === "across" ? pos.startCol + i : pos.startCol;
-          if (row < gridSize && col < gridSize && grid[row][col] !== "#") {
-            grid[row][col] = pos.word[i].toUpperCase();
-          }
-        }
-      });
-
-      // Store the generated puzzle
-      console.log("Storing AI-generated puzzle in database...");
-      await ctx.runMutation(internal.crossword.createCrosswordPuzzle, {
-        puzzleId,
-        userId: args.userId,
-        dateString: args.dateString,
-        words: puzzleData.words,
-        clues: puzzleData.clues,
-        gridSize: gridSize, // 7x7
-        grid,
-        wordPositions: puzzleData.positions,
-        generatedAt: Date.now(),
-        expiresAt,
-        theme: puzzleData.theme || "Daily Challenge", // Store the theme
-      });
-
-      console.log("AI-generated crossword puzzle stored successfully!");
-      return {
-        puzzleId,
-        words: puzzleData.words,
-        clues: puzzleData.clues,
-        gridSize: gridSize, // Fixed: was returning 5, now returns actual 7
-        wordPositions: puzzleData.positions,
-        expiresAt,
-      };
-    } catch (error) {
-      console.error("Error generating crossword with AI:", error);
-      console.error("Error details:", {
-        message: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-        userId: args.userId,
-        dateString: args.dateString,
-      });
-
-      // Re-throw the error instead of using a fallback
-      // This will allow the frontend to handle the error appropriately
-      throw new Error(
-        `Failed to generate crossword puzzle: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
+    return {
+      puzzleId: args.puzzleId,
+      words,
+      clues,
+      gridSize,
+      wordPositions: positions,
+      expiresAt,
+    };
   },
 });
 
@@ -944,7 +871,7 @@ export const generateCrosswordHint = internalAction({
 
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -956,6 +883,7 @@ export const generateCrosswordHint = internalAction({
             content: `The crossword clue is: "${clue}". The word is "${word}". Give me a topical hint about what this word relates to or its category, without revealing the answer.`,
           },
         ],
+
         temperature: 0.7,
         max_tokens: 150,
       });
@@ -989,23 +917,150 @@ export const generateCrosswordHint = internalAction({
   },
 });
 
-// Helper function to find the most recent puzzle for a user today
-async function findTodaysPuzzle(ctx: any, userId: Id<"users">) {
-  const today = new Date().toISOString().split("T")[0];
+// Internal query to check if user has completed any crossword (for use in actions)
+export const checkUserCompletedAnyCrossword = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const completedCrossword = await ctx.db
+      .query("crosswordResults")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("completed"), true))
+      .first();
 
+    return completedCrossword !== null;
+  },
+});
+
+// Helper function to select random items from the word pool
+function selectRandomWords(
+  pool: { word: string; clue: string }[],
+  count: number,
+) {
+  const shuffled = [...pool].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
+
+// Helper function to select compatible words that are more likely to intersect
+function selectCompatibleWords(
+  pool: { word: string; clue: string }[],
+  count: number,
+) {
+  if (pool.length < count) {
+    return pool;
+  }
+
+  // Start with a random word
+  const selected: { word: string; clue: string }[] = [];
+  const remaining = [...pool];
+
+  // Pick first word randomly
+  const firstIndex = Math.floor(Math.random() * remaining.length);
+  selected.push(remaining.splice(firstIndex, 1)[0]);
+
+  // For subsequent words, prefer those with shared letters
+  while (selected.length < count && remaining.length > 0) {
+    let bestMatch = null;
+    let bestScore = -1;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const candidate = remaining[i];
+      let score = 0;
+
+      // Calculate compatibility score based on shared letters
+      for (const selectedWord of selected) {
+        const sharedLetters = countSharedLetters(
+          candidate.word.toUpperCase(),
+          selectedWord.word.toUpperCase(),
+        );
+        score += sharedLetters;
+      }
+
+      // Add some randomness to prevent always picking the same combinations
+      score += Math.random() * 0.5;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = i;
+      }
+    }
+
+    if (bestMatch !== null) {
+      selected.push(remaining.splice(bestMatch, 1)[0]);
+    } else {
+      // Fallback to random selection
+      const randomIndex = Math.floor(Math.random() * remaining.length);
+      selected.push(remaining.splice(randomIndex, 1)[0]);
+    }
+  }
+
+  return selected;
+}
+
+// Helper function to count shared letters between two words
+function countSharedLetters(word1: string, word2: string): number {
+  const letters1 = word1.split("");
+  const letters2 = word2.split("");
+  let count = 0;
+
+  for (const letter of letters1) {
+    if (letters2.includes(letter)) {
+      count++;
+      // Remove the letter to avoid double counting
+      letters2.splice(letters2.indexOf(letter), 1);
+    }
+  }
+
+  return count;
+}
+
+// Helper function removed - no longer needed for unlimited play
+
+// Helper function to find the most recent puzzle for a user (any time)
+async function findMostRecentPuzzle(ctx: any, userId: Id<"users">) {
   const allUserPuzzles = await ctx.db
+    .query("crosswordPuzzles")
+    .filter((q: any) => q.eq(q.field("userId"), userId))
+    .filter((q: any) => q.eq(q.field("gridSize"), 7)) // Only return 7x7 puzzles
+    .collect();
+
+  return allUserPuzzles.length > 0
+    ? allUserPuzzles.sort((a: any, b: any) => b.generatedAt - a.generatedAt)[0]
+    : null;
+}
+
+// Helper function removed - no longer needed for unlimited play
+
+// Helper function to clear user crossword session for fresh start
+async function clearUserCrosswordSession(ctx: any, userId: Id<"users">) {
+  // Clear any incomplete crossword attempts
+  const userAttempts = await ctx.db
+    .query("userCrosswordAttempts")
+    .filter((q: any) => q.eq(q.field("userId"), userId))
+    .filter((q: any) => q.eq(q.field("completed"), false))
+    .collect();
+
+  for (const attempt of userAttempts) {
+    await ctx.db.delete(attempt._id);
+  }
+}
+
+// Helper function to clean up old 7x7 crossword puzzles that are incompatible with 15x15 system
+async function cleanupOldCrosswordPuzzles(ctx: any, userId: Id<"users">) {
+  const userPuzzles = await ctx.db
     .query("crosswordPuzzles")
     .filter((q: any) => q.eq(q.field("userId"), userId))
     .collect();
 
-  const todaysPuzzles = allUserPuzzles.filter(
-    (p: any) =>
-      p.puzzleId.startsWith(`${userId}_${today}`) && Date.now() <= p.expiresAt,
-  );
-
-  return todaysPuzzles.length > 0
-    ? todaysPuzzles.sort((a: any, b: any) => b.generatedAt - a.generatedAt)[0]
-    : null;
+  // Delete any puzzles that aren't 7x7
+  for (const puzzle of userPuzzles) {
+    if (puzzle.gridSize !== 7) {
+      await ctx.db.delete(puzzle._id);
+      console.log(
+        `Deleted old ${puzzle.gridSize}x${puzzle.gridSize} puzzle: ${puzzle.puzzleId}`,
+      );
+    }
+  }
 }
 
 // Helper function to calculate crossword score
@@ -1341,3 +1396,465 @@ export const useCrosswordSuggestion = mutation({
     };
   },
 });
+
+// Admin-only: Clean up all old 7x7 crossword puzzles from the system
+export const migrateOldCrosswordPuzzles = mutation({
+  args: {},
+  returns: v.object({
+    success: v.boolean(),
+    deletedCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdForMutation(ctx);
+
+    // This should ideally have admin permission check, but for now just clean up
+    const allPuzzles = await ctx.db.query("crosswordPuzzles").collect();
+
+    let deletedCount = 0;
+    for (const puzzle of allPuzzles) {
+      if (puzzle.gridSize !== 7) {
+        await ctx.db.delete(puzzle._id);
+        deletedCount++;
+        console.log(
+          `Migration: Deleted old ${puzzle.gridSize}x${puzzle.gridSize} puzzle: ${puzzle.puzzleId}`,
+        );
+      }
+    }
+
+    return {
+      success: true,
+      deletedCount,
+    };
+  },
+});
+
+// Admin-only: Delete ALL existing crossword puzzles for fresh start
+export const deleteAllCrosswordPuzzles = mutation({
+  args: {},
+  returns: v.object({
+    success: v.boolean(),
+    deletedCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await getCurrentUserIdForMutation(ctx);
+
+    // Delete all puzzles for fresh start
+    const allPuzzles = await ctx.db.query("crosswordPuzzles").collect();
+
+    let deletedCount = 0;
+    for (const puzzle of allPuzzles) {
+      await ctx.db.delete(puzzle._id);
+      deletedCount++;
+      console.log(
+        `Deleted puzzle: ${puzzle.puzzleId} with words: ${puzzle.words.join(", ")}`,
+      );
+    }
+
+    return {
+      success: true,
+      deletedCount,
+    };
+  },
+});
+
+// #############################################################################
+// # WEEKLY WORD POOL GENERATION
+// #############################################################################
+
+export const generateWeeklyWordPool = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const openai = new (await import("openai")).default({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    console.log("Generating weekly word pool via cron job...");
+
+    const MAX_ATTEMPTS = 3;
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      try {
+        const themeResponse = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a creative assistant. Generate a single, interesting, and broad theme for a week of crossword puzzles. Examples: 'Space Exploration', 'Literary Classics', 'Famous Inventors', 'Marine Biology'. Respond with the theme name only.",
+            },
+            { role: "user", content: "Generate a new theme." },
+          ],
+        });
+        const theme =
+          themeResponse.choices[0]?.message?.content?.trim() ??
+          "General Knowledge";
+
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: `You are an AI assistant that generates word lists for crossword puzzles.
+              Generate a list of EXACTLY 80 unique words and corresponding clues related to the theme: "${theme}".
+              Each word must be between 3 and 6 letters long.
+              The response MUST be a valid JSON object with a single key "words", which is an array of 80 objects.
+              Each object in the array should have two keys: "word" and "clue".
+              Example format: { "words": [{ "word": "EARTH", "clue": "Third planet from the sun" }, ...] }`,
+            },
+            {
+              role: "user",
+              content: `Generate EXACTLY 80 words and clues for the theme "${theme}".`,
+            },
+          ],
+        });
+
+        const content = response.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error("AI returned empty content for word pool.");
+        }
+
+        const parsed = JSON.parse(content);
+        const words = parsed.words as { word: string; clue: string }[];
+
+        if (words && words.length >= 80) {
+          await ctx.runMutation(internal.crossword.populateWordPool, {
+            words: words.slice(0, 80), // Ensure exactly 80
+          });
+          console.log("Successfully generated and populated the word pool.");
+          return; // Exit after success
+        }
+
+        console.log(
+          `Attempt ${i + 1} failed: AI generated only ${words?.length || 0} words. Retrying...`,
+        );
+      } catch (error) {
+        console.error(`An error occurred during attempt ${i + 1}:`, error);
+      }
+    }
+
+    throw new Error(
+      `Failed to generate a sufficient word pool after ${MAX_ATTEMPTS} attempts.`,
+    );
+  },
+});
+
+export const populateWordPool = internalMutation({
+  args: {
+    words: v.array(v.object({ word: v.string(), clue: v.string() })),
+  },
+  handler: async (ctx, args) => {
+    // Clear existing word pool to make way for the new weekly set
+    const existingWords = await ctx.db.query("wordPool").collect();
+    for (const wordDoc of existingWords) {
+      await ctx.db.delete(wordDoc._id);
+    }
+    console.log(
+      `Cleared ${existingWords.length} words from the existing pool.`,
+    );
+
+    // Populate with new words
+    for (const item of args.words) {
+      await ctx.db.insert("wordPool", {
+        word: item.word.toUpperCase(),
+        clue: item.clue,
+      });
+    }
+    console.log(`Populated word pool with ${args.words.length} new words.`);
+  },
+});
+
+// #############################################################################
+// # LAYOUT GENERATION & FALLBACK LOGIC
+// #############################################################################
+
+interface Layout {
+  positions: any[];
+  grid: string[][];
+}
+
+type Position = {
+  word: string;
+  startRow: number;
+  startCol: number;
+  direction: "across" | "down";
+  clueNumber: number;
+};
+
+function generateLayout(words: string[], gridSize: number): Layout | null {
+  const sortedWords = [...words].sort((a, b) => b.length - a.length);
+  const grid: string[][] = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(""));
+  const positions: Omit<Position, "clueNumber">[] = [];
+
+  // Attempt to place the first (longest) word in the center
+  const firstWord = sortedWords[0];
+  const startRow = Math.floor(gridSize / 2);
+  const startCol = Math.floor((gridSize - firstWord.length) / 2);
+
+  if (!placeWord(firstWord, startRow, startCol, "across", grid, positions)) {
+    return null; // Should not happen for an empty grid
+  }
+
+  const unplacedWords = sortedWords.slice(1);
+
+  let placedSomething = true; // FIX: Added missing variable declaration
+  while (unplacedWords.length > 0 && placedSomething) {
+    placedSomething = false;
+    for (let i = 0; i < unplacedWords.length; i++) {
+      const wordToPlace = unplacedWords[i];
+      let bestFit = null;
+
+      // Find the best intersection point for this word
+      for (const placedPos of positions) {
+        for (let j = 0; j < wordToPlace.length; j++) {
+          for (let k = 0; k < placedPos.word.length; k++) {
+            if (wordToPlace[j] === placedPos.word[k]) {
+              const newDirection =
+                placedPos.direction === "across" ? "down" : "across";
+              let newRow, newCol;
+
+              if (placedPos.direction === "across") {
+                newRow = placedPos.startRow - j;
+                newCol = placedPos.startCol + k;
+              } else {
+                newRow = placedPos.startRow + k;
+                newCol = placedPos.startCol - j;
+              }
+
+              if (canPlace(wordToPlace, newRow, newCol, newDirection, grid)) {
+                bestFit = {
+                  word: wordToPlace,
+                  startRow: newRow,
+                  startCol: newCol,
+                  direction: newDirection,
+                };
+                break;
+              }
+            }
+          }
+          if (bestFit) break;
+        }
+        if (bestFit) break;
+      }
+
+      if (bestFit) {
+        placeWord(
+          bestFit.word,
+          bestFit.startRow,
+          bestFit.startCol,
+          bestFit.direction as "across" | "down",
+          grid,
+          positions,
+        );
+        unplacedWords.splice(i, 1);
+        placedSomething = true;
+        break;
+      }
+    }
+  }
+
+  if (unplacedWords.length > 0) {
+    return null; // Failed to place all words
+  }
+
+  // Final validation: Ensure all words form a single connected component
+  if (!isSingleComponent(positions)) {
+    return null;
+  }
+
+  const finalPositions: Position[] = [...positions]
+    .sort(
+      (a, b) =>
+        a.startRow * gridSize +
+        a.startCol -
+        (b.startRow * gridSize + b.startCol),
+    )
+    .map((pos, index) => ({
+      ...pos,
+      clueNumber: index + 1,
+    }));
+
+  return { positions: finalPositions, grid };
+}
+
+function canPlace(
+  word: string,
+  row: number,
+  col: number,
+  direction: "across" | "down",
+  grid: string[][],
+): boolean {
+  const gridSize = grid.length;
+  if (row < 0 || col < 0) return false;
+
+  if (direction === "across") {
+    if (col + word.length > gridSize) return false;
+    // Check for adjacent letters at the start and end of the word
+    if (grid[row]?.[col - 1] || grid[row]?.[col + word.length]) {
+      return false;
+    }
+    for (let i = 0; i < word.length; i++) {
+      const existing = grid[row][col + i];
+      const isIntersection = existing === word[i];
+
+      // Cell must be empty, unless it's a valid intersection point
+      if (existing && !isIntersection) return false;
+
+      // Check perpendicular neighbors for non-intersection cells
+      if (!isIntersection) {
+        if (grid[row - 1]?.[col + i] || grid[row + 1]?.[col + i]) {
+          return false;
+        }
+      }
+    }
+  } else {
+    // "down"
+    if (row + word.length > gridSize) return false;
+    // Check for adjacent letters at the start and end of the word
+    if (grid[row - 1]?.[col] || grid[row + word.length]?.[col]) {
+      return false;
+    }
+    for (let i = 0; i < word.length; i++) {
+      const existing = grid[row + i][col];
+      const isIntersection = existing === word[i];
+
+      if (existing && !isIntersection) return false;
+
+      if (!isIntersection) {
+        if (grid[row + i]?.[col - 1] || grid[row + i]?.[col + 1]) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+function placeWord(
+  word: string,
+  row: number,
+  col: number,
+  direction: "across" | "down",
+  grid: string[][],
+  positions: Omit<Position, "clueNumber">[],
+) {
+  if (direction === "across") {
+    for (let i = 0; i < word.length; i++) {
+      grid[row][col + i] = word[i];
+    }
+  } else {
+    for (let i = 0; i < word.length; i++) {
+      grid[row + i][col] = word[i];
+    }
+  }
+  positions.push({
+    word,
+    startRow: row,
+    startCol: col,
+    direction: direction,
+  });
+  return true;
+}
+
+function isSingleComponent(positions: Omit<Position, "clueNumber">[]): boolean {
+  if (positions.length <= 1) return true;
+  const visited = new Set<string>();
+  const queue: Omit<Position, "clueNumber">[] = [positions[0]];
+  visited.add(positions[0].word);
+
+  let head = 0;
+  while (head < queue.length) {
+    const currentPos = queue[head++];
+    for (const otherPos of positions) {
+      if (!visited.has(otherPos.word) && wordsIntersect(currentPos, otherPos)) {
+        visited.add(otherPos.word);
+        queue.push(otherPos);
+      }
+    }
+  }
+  return visited.size === positions.length;
+}
+
+function wordsIntersect(
+  pos1: Omit<Position, "clueNumber">,
+  pos2: Omit<Position, "clueNumber">,
+): boolean {
+  const [startRow1, endRow1, startCol1, endCol1] = getWordBounds(pos1);
+  const [startRow2, endRow2, startCol2, endCol2] = getWordBounds(pos2);
+
+  return (
+    startRow1 <= endRow2 &&
+    endRow1 >= startRow2 &&
+    startCol1 <= endCol2 &&
+    endCol1 >= startCol2
+  );
+}
+
+function getWordBounds(pos: Omit<Position, "clueNumber">) {
+  if (pos.direction === "across") {
+    return [
+      pos.startRow,
+      pos.startRow,
+      pos.startCol,
+      pos.startCol + pos.word.length - 1,
+    ];
+  } else {
+    return [
+      pos.startRow,
+      pos.startRow + pos.word.length - 1,
+      pos.startCol,
+      pos.startCol,
+    ];
+  }
+}
+
+function getFallbackPuzzle() {
+  const gridSize = 7;
+  const fallbackSets = [
+    {
+      theme: "Classic Combo",
+      words: ["ART", "TAPE", "EGG"],
+      clues: ["Creative expression", "Sticky stuff", "Breakfast food"],
+      positions: [
+        {
+          word: "ART",
+          startRow: 3,
+          startCol: 2,
+          direction: "across",
+          clueNumber: 1,
+        },
+        {
+          word: "TAPE",
+          startRow: 1,
+          startCol: 4,
+          direction: "down",
+          clueNumber: 2,
+        },
+        {
+          word: "EGG",
+          startRow: 3,
+          startCol: 4,
+          direction: "down",
+          clueNumber: 3,
+        },
+      ],
+    },
+    // Add more valid 7x7 fallbacks here if needed
+  ];
+  const randomSet =
+    fallbackSets[Math.floor(Math.random() * fallbackSets.length)];
+
+  const grid = Array(gridSize)
+    .fill(null)
+    .map(() => Array(gridSize).fill(""));
+  randomSet.positions.forEach((pos) => {
+    for (let i = 0; i < pos.word.length; i++) {
+      const row = pos.direction === "across" ? pos.startRow : pos.startRow + i;
+      const col = pos.direction === "across" ? pos.startCol + i : pos.startCol;
+      if (grid[row]) grid[row][col] = pos.word[i];
+    }
+  });
+
+  return { ...randomSet, grid };
+}
